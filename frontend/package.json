@@ -1,0 +1,17 @@
+{
+  "name": "qr-generator-frontend",
+  "version": "1.0.0",
+  "description": "QR Code Generator Frontend Application",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 0",
+    "lint": "echo \"No linting configured\" && exit 0",
+    "build": "echo \"No build step needed for static files\" && exit 0",
+    "serve": "python -m http.server 3000",
+    "dev": "python -m http.server 3000"
+  },
+  "keywords": ["qr-code", "generator", "frontend"],
+  "author": "AI Generated",
+  "license": "MIT",
+  "devDependencies": {}
+}

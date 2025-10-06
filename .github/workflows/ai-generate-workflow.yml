@@ -1,0 +1,43 @@
+name: AI Pipeline Generator
+'on':
+  push:
+    branches:
+    - main
+  workflow_dispatch: {}
+jobs:
+  generate-pipeline:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install dependencies
+      run: pip install pyyaml
+    - name: Run AI Pipeline Generator
+      run: python generate_workflow.py --auto-commit
+    - name: Create Pull Request
+      if: success()
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: 'AI: Update pipeline configuration'
+        title: AI-Generated Pipeline Updates
+        body: "\n                                This PR was automatically generated\
+          \ by the AI Pipeline Generator.\n                                \n    \
+          \                            ## Changes:\n                             \
+          \   - Updated CI/CD workflows\n                                - Infrastructure\
+          \ as Code updates\n                                - Docker configuration\
+          \ updates\n                                - Documentation updates\n   \
+          \                             \n                                ## Generated\
+          \ by:\n                                AI Pipeline Generator v1.0\n    \
+          \                            "
+        branch: ai-pipeline-20251006-140851
+        labels: ai-generated,demo,pipeline

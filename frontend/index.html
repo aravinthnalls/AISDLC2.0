@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>QR Code Generator</h1>
+            <p>Generate QR codes in real-time from multiple data types</p>
+        </header>
+
+        <main>
+            <div class="input-section">
+                <div class="form-group">
+                    <label for="dataType">Data Type:</label>
+                    <select id="dataType" class="form-control">
+                        <option value="text">Plain Text</option>
+                        <option value="url">URL/Website</option>
+                        <option value="email">Email Address</option>
+                        <option value="phone">Phone Number</option>
+                        <option value="wifi">WiFi Credentials</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="inputData">Enter your data:</label>
+                    <textarea 
+                        id="inputData" 
+                        class="form-control" 
+                        placeholder="Enter text, URL, email, phone, or WiFi details..."
+                        rows="4"
+                    ></textarea>
+                </div>
+
+                <div class="helper-text" id="helperText">
+                    Enter any text to generate a QR code
+                </div>
+            </div>
+
+            <div class="output-section">
+                <div class="qr-preview">
+                    <div id="qrContainer" class="qr-container">
+                        <div class="placeholder">
+                            <div class="placeholder-icon">📱</div>
+                            <p>Your QR code will appear here</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="download-section">
+                    <button id="downloadBtn" class="download-btn" disabled>
+                        <span class="btn-icon">⬇️</span>
+                        Download QR Code
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Generating QR code...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage">
+            <span class="error-icon">⚠️</span>
+            <span id="errorText"></span>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 QR Code Generator. Built with FastAPI and vanilla JavaScript.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
