@@ -39,5 +39,5 @@ jobs:
           \                             \n                                ## Generated\
           \ by:\n                                AI Pipeline Generator v1.0\n    \
           \                            "
-        branch: ai-pipeline-20251006-140851
+        branch: ai-pipeline-20251008-174611
         labels: ai-generated,demo,pipeline
