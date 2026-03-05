@@ -17,10 +17,10 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Checkout PR branch
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: main
           fetch-depth: 0
 
       - name: Set up Python
@@ -38,6 +38,8 @@ jobs:
           python ai_devops_agent.py --analyze-only --verbose > analysis_output.txt 2>&1 || true
 
       - name: Generate suggestions report
+        env:
+          OPENAI_API_TOKEN: ${{ secrets.OPENAI_API_TOKEN }}
         run: |
           python ai_devops_agent.py --suggest-changes || true
 
@@ -97,6 +99,8 @@ jobs:
           cat analysis_output.txt
 
       - name: Generate suggestions and fixes
+        env:
+          OPENAI_API_TOKEN: ${{ secrets.OPENAI_API_TOKEN }}
         run: |
           python ai_devops_agent.py --suggest-changes
           python ai_devops_agent.py --apply-fixes
@@ -167,6 +171,8 @@ jobs:
           python ai_devops_agent.py --analyze-only --verbose
 
       - name: Generate suggestions
+        env:
+          OPENAI_API_TOKEN: ${{ secrets.OPENAI_API_TOKEN }}
         run: |
           python ai_devops_agent.py --suggest-changes
 
