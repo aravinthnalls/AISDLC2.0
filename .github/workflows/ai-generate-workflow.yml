@@ -1,43 +1,77 @@
-name: AI Pipeline Generator
-'on':
-  push:
+name: AI Pipeline Analyzer
+
+on:
+  pull_request:
+    types: [closed]
     branches:
-    - main
-  workflow_dispatch: {}
+      - main
+  workflow_dispatch:
+
 jobs:
-  generate-pipeline:
+  analyze-and-suggest:
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    - name: Install dependencies
-      run: pip install pyyaml
-    - name: Run AI Pipeline Generator
-      run: python generate_workflow.py --auto-commit
-    - name: Create Pull Request
-      if: success()
-      uses: peter-evans/create-pull-request@v5
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: 'AI: Update pipeline configuration'
-        title: AI-Generated Pipeline Updates
-        body: "\n                                This PR was automatically generated\
-          \ by the AI Pipeline Generator.\n                                \n    \
-          \                            ## Changes:\n                             \
-          \   - Updated CI/CD workflows\n                                - Infrastructure\
-          \ as Code updates\n                                - Docker configuration\
-          \ updates\n                                - Documentation updates\n   \
-          \                             \n                                ## Generated\
-          \ by:\n                                AI Pipeline Generator v1.0\n    \
-          \                            "
-        branch: ai-pipeline-20251008-174611
-        labels: ai-generated,demo,pipeline
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pyyaml requests
+
+      - name: Run AI analyzer
+        env:
+          OPENAI_API_TOKEN: ${{ secrets.OPENAI_API_TOKEN }}
+        run: |
+          python generate_workflow.py --analyze-only --verbose > analysis_output.txt 2>&1 || true
+          cat analysis_output.txt
+
+      - name: Generate suggestions report
+        run: |
+          python generate_workflow.py --suggest-changes
+
+      - name: Check for suggested changes
+        id: check_changes
+        run: |
+          if git diff --quiet && [ ! -f suggestions.md ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create suggestion branch and PR
+        if: steps.check_changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="ai-suggestions-$(date +%Y%m%d-%H%M%S)"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "AI: Pipeline analysis suggestions after PR #${{ github.event.pull_request.number }} merge"
+          git push origin "$BRANCH"
+
+          PR_BODY=$(cat suggestions.md 2>/dev/null || echo "AI analysis completed. See workflow logs for details.")
+
+          gh pr create \
+            --title "AI Suggestions: Post-merge analysis of PR #${{ github.event.pull_request.number }}" \
+            --body "$PR_BODY" \
+            --base main \
+            --head "$BRANCH" \
+            --label "ai-generated"
+
+      - name: No changes needed
+        if: steps.check_changes.outputs.has_changes == 'false'
+        run: echo "✅ AI analysis complete — no changes suggested."

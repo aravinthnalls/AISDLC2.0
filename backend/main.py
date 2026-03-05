@@ -65,55 +65,45 @@ def format_data_for_qr(data: str, data_type: str) -> str:
 async def root():
     return {"message": "QR Code Generator API is running"}
 
-@app.post("/generate")
+@app.post("/generate-qr")
 async def generate_qr(request: QRRequest):
-    """Generate QR code from input data."""
+    """Generate QR code from provided data."""
     try:
+        if not request.data.strip():
+            raise HTTPException(status_code=400, detail="Data cannot be empty")
+        
         # Format data based on type
         formatted_data = format_data_for_qr(request.data, request.data_type)
         
         # Create QR code
         qr = qrcode.QRCode(
-            version=1,  # Controls the size of the QR Code
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            version=1,  # Controls size (1 is smallest)
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
             box_size=10,
             border=4,
         )
+        
         qr.add_data(formatted_data)
         qr.make(fit=True)
         
-        # Create image
-        img = qr.make_image(fill_color="black", back_color="white")
+        # Create QR code image
+        qr_image = qr.make_image(fill_color="black", back_color="white")
         
-        # Save to bytes buffer
+        # Convert to bytes
         img_buffer = BytesIO()
-        img.save(img_buffer, format='PNG')
+        qr_image.save(img_buffer, format='PNG')
         img_buffer.seek(0)
         
         return StreamingResponse(
             BytesIO(img_buffer.read()),
             media_type="image/png",
-            headers={"Content-Disposition": "inline; filename=qr_code.png"}
+            headers={"Content-Disposition": "attachment; filename=qrcode.png"}
         )
         
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"QR generation failed: {str(e)}")
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint for monitoring."""
-    return {
-        "status": "healthy",
-        "timestamp": "2024-01-01T00:00:00Z",
-        "version": "1.0.0",
-        "service": "QR Code Generator API"
-    }
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+        raise HTTPException(status_code=500, detail=f"Error generating QR code: {str(e)}")
 
 @app.get("/health")
 async def health_check():
