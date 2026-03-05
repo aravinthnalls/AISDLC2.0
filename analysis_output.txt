@@ -1,0 +1,393 @@
+🤖 AI DevOps Agent
+==================================================
+🤖 AI DevOps Agent — OpenAI integration active
+🔧 Loaded config from pipeline_request.txt: instance_type=t2.micro, environment=production
+🔍 Running analysis only...
+🔍 Analyzing project structure...
+🧠 AI enriching security analysis...
+✅ AI security enrichment complete
+🧠 AI enriching best practices analysis...
+✅ AI best practices enrichment complete
+🧠 AI generating pipeline and infrastructure recommendations...
+✅ AI pipeline recommendations complete
+
+📊 Project Analysis Report
+==================================================
+
+🎨 Frontend Application:
+   📋 Framework: Node.js/JavaScript
+   🌐 Port: 8000
+   🛠️  Available scripts:
+      • test: Available
+      • build: Available
+      • lint: Available
+      • dev: Available
+
+🔧 Backend Application:
+   💻 Language: Python
+   🚀 Framework: FastAPI
+   🌐 Port: 8000
+   📦 Dependencies: 4 packages
+      • Key packages: fastapi, uvicorn, qrcode[pil]
+   🧪 Testing: pytest
+   🔍 Linting: flake8
+
+🏗️ Infrastructure:
+   ✅ Terraform configuration detected
+   📄 Configuration files: 3
+      • variables.tf
+      • main.tf
+      • outputs.tf
+
+🐳 Containerization:
+   ✅ Docker Compose configuration detected
+   📦 Dockerfiles found: 2
+      • Backend service
+      • Frontend service
+
+📚 Version Control:
+   Branch: main
+   Repository: https://github.com/aravinthnalls/AISDLC2.0
+
+🔒 Security Analysis:
+   🔴 Overall Risk Level: HIGH
+   ⚠️  Total Issues Found: 6
+
+   Frontend Issues (3):
+      • [MEDIUM] Missing package-lock.json
+      • [MEDIUM] Missing security middleware packages
+      • [MEDIUM] Potential XSS risk with innerHTML in script.js
+
+   Backend Issues (1):
+      • [LOW] No CORS configuration in test_main.py
+
+   Infrastructure Issues (2):
+      • [HIGH] Container runs as root in backend/Dockerfile
+      • [HIGH] Container runs as root in frontend/Dockerfile
+
+📋 Best Practices Compliance:
+   🔴 Compliance Score: 41%
+   💡 Recommendations: 7
+      • Missing frontend README.md
+      • No ESLint configuration
+      • No test files found
+      • No .gitignore file
+      • No logging configuration
+
+🤖 AI-Powered Recommendations
+==================================================
+
+📋 Pipeline Stages:
+   • {'name': 'Build', 'purpose': 'Compile and prepare the application for deployment.', 'tools': ['npm', 'pip']}
+   • {'name': 'Test', 'purpose': 'Run unit and integration tests to ensure code quality.', 'tools': ['pytest', 'npm test']}
+   • {'name': 'Lint', 'purpose': 'Check code for stylistic errors and enforce coding standards.', 'tools': ['flake8', 'npm run lint']}
+   • {'name': 'Deploy', 'purpose': 'Deploy the application to the production environment.', 'tools': ['Docker', 'Uvicorn']}
+
+📂 Testing Strategy:
+   unit: Use pytest for unit testing the backend and npm test for frontend.
+   integration: Integration tests can be added using pytest with FastAPI's test client.
+   e2e: Consider using tools like Cypress or Selenium for end-to-end testing.
+
+📋 Deployment Recommendations:
+   • Use Docker containers for both frontend and backend to ensure consistency across environments.
+   • Implement CI/CD pipelines using tools like GitHub Actions or GitLab CI.
+   • Consider using a cloud provider for hosting, such as AWS or Azure, to leverage scalability.
+
+📋 Infra Optimisations:
+   • Implement load balancing to handle increased traffic.
+   • Use a CDN for serving static files to improve load times.
+   • Optimize database connections and queries to enhance performance.
+
+📋 Performance Tips:
+   • Enable caching for frequently accessed data.
+   • Minimize the size of assets (images, CSS, JS) to reduce load times.
+   • Monitor application performance using APM tools like New Relic or Datadog.
+
+🔍 Raw Analysis Data (Verbose Mode):
+{
+  "frontend": {
+    "exists": true,
+    "path": "frontend",
+    "framework": "node",
+    "dependencies": {},
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 0",
+      "lint": "echo \"No linting configured\" && exit 0",
+      "build": "echo \"No build step needed for static files\" && exit 0",
+      "serve": "python -m http.server 3000",
+      "dev": "python -m http.server 3000"
+    },
+    "test_command": "npm test",
+    "build_command": "npm run build",
+    "lint_command": "npm run lint",
+    "install_command": "npm install",
+    "port": 8000
+  },
+  "backend": {
+    "exists": true,
+    "path": "backend",
+    "language": "python",
+    "framework": "fastapi",
+    "dependencies": [
+      "fastapi==0.104.1",
+      "uvicorn==0.24.0",
+      "qrcode[pil]==7.4.2",
+      "python-multipart==0.0.6"
+    ],
+    "test_command": "pytest",
+    "lint_command": "flake8",
+    "install_command": "pip install -r requirements.txt",
+    "port": 8000
+  },
+  "infrastructure": {
+    "terraform_exists": true,
+    "terraform_path": "terraform",
+    "terraform_files": [
+      "terraform/variables.tf",
+      "terraform/main.tf",
+      "terraform/outputs.tf"
+    ]
+  },
+  "docker": {
+    "compose_exists": true,
+    "dockerfiles": [
+      "backend/Dockerfile",
+      "frontend/Dockerfile"
+    ]
+  },
+  "git": {
+    "is_git_repo": true,
+    "current_branch": "main",
+    "remote_url": "https://github.com/aravinthnalls/AISDLC2.0"
+  },
+  "security": {
+    "frontend": [
+      {
+        "severity": "MEDIUM",
+        "category": "Dependency Management",
+        "issue": "Missing package-lock.json",
+        "description": "No package-lock.json file found - this can lead to inconsistent installations",
+        "recommendation": "Run `npm install` to generate package-lock.json and commit it"
+      },
+      {
+        "severity": "MEDIUM",
+        "category": "Security Headers",
+        "issue": "Missing security middleware packages",
+        "description": "No security-related packages detected (helmet, cors, etc.)",
+        "recommendation": "Consider adding security headers and CORS configuration"
+      },
+      {
+        "severity": "MEDIUM",
+        "category": "XSS Vulnerability",
+        "issue": "Potential XSS risk with innerHTML in script.js",
+        "description": "innerHTML can execute scripts if user input is not sanitized",
+        "recommendation": "Use textContent or sanitize input with DOMPurify"
+      }
+    ],
+    "backend": [
+      {
+        "severity": "LOW",
+        "category": "CORS Configuration",
+        "issue": "No CORS configuration in test_main.py",
+        "description": "CORS not configured - may cause frontend integration issues",
+        "recommendation": "Add CORSMiddleware with appropriate origins"
+      }
+    ],
+    "infrastructure": [
+      {
+        "severity": "HIGH",
+        "category": "Container Security",
+        "issue": "Container runs as root in backend/Dockerfile",
+        "description": "No USER directive found - container runs as root by default",
+        "recommendation": "Add non-root user: USER appuser"
+      },
+      {
+        "severity": "HIGH",
+        "category": "Container Security",
+        "issue": "Container runs as root in frontend/Dockerfile",
+        "description": "No USER directive found - container runs as root by default",
+        "recommendation": "Add non-root user: USER appuser"
+      }
+    ],
+    "overall_risk": "HIGH",
+    "ai_enrichment": {
+      "raw": "{\n  \"enriched_findings\": [\n    {\n      \"severity\": \"MEDIUM\",\n      \"category\": \"Dependency Management\",\n      \"issue\": \"Missing package-lock.json\",\n      \"description\": \"No package-lock.json file found - this can lead to inconsistent installations\",\n      \"recommendation\": \"Run `npm install` to generate package-lock.json and commit it\",\n      \"cve_references\": [],\n      \"exploit_scenario\": \"Inconsistent package versions could lead to unexpected behavior or vulnerabilities in production.\",\n      \"priority_fix\": \"High\"\n    },\n    {\n      \"severity\": \"MEDIUM\",\n      \"category\": \"Security Headers\",\n      \"issue\": \"Missing security middleware packages\",\n      \"description\": \"No security-related packages detected (helmet, cors, etc.)\",\n      \"recommendation\": \"Consider adding security headers and CORS configuration\",\n      \"cve_references\": [],\n      \"exploit_scenario\": \"Lack of security headers may expose the application to various attacks, including XSS and clickjacking.\",\n      \"priority_fix\": \"High\"\n    },\n    {\n      \"severity\": \"MEDIUM\",\n      \"category\": \"XSS Vulnerability\",\n      \"issue\": \"Potential XSS risk with innerHTML in script.js\",\n      \"description\": \"innerHTML can execute scripts if user input is not sanitized\",\n      \"recommendation\": \"Use textContent or sanitize input with DOMPurify\",\n      \"cve_references\": [\"CVE-2021-XXXX\"],  // Placeholder for relevant CVE\n      \"exploit_scenario\": \"An attacker could inject malicious scripts through unsanitized user input, leading to data theft or session hijacking.\",\n      \"priority_fix\": \"Critical\"\n    },\n    {\n      \"severity\": \"LOW\",\n      \"category\": \"CORS Configuration\",\n      \"issue\": \"No CORS configuration in test_main.py\",\n      \"description\": \"CORS not configured - may cause frontend integration issues\",\n      \"recommendation\": \"Add CORSMiddleware with appropriate origins\",\n      \"cve_references\": [],\n      \"exploit_scenario\": \"Without proper CORS configuration, the application may be vulnerable to cross-origin attacks.\",\n      \"priority_fix\": \"Medium\"\n    },\n    {\n      \"severity\": \"HIGH\",\n      \"category\": \"Container Security\",\n      \"issue\": \"Container runs as root in backend/Dockerfile\",\n      \"description\": \"No USER directive found - container runs as root by default\",\n      \"recommendation\": \"Add non-root user: USER appuser\",\n      \"cve_references\": [],\n      \"exploit_scenario\": \"Running as root increases the risk of privilege escalation and potential system compromise if the container is exploited.\",\n      \"priority_fix\": \"Critical\"\n    },\n    {\n      \"severity\": \"HIGH\",\n      \"category\": \"Container Security\",\n      \"issue\": \"Container runs as root in frontend/Dockerfile\",\n      \"description\": \"No USER directive found - container runs as root by default\",\n      \"recommendation\": \"Add non-root user: USER appuser\",\n      \"cve_references\": [],\n      \"exploit_scenario\": \"Similar to backend, running as root in the frontend container poses significant security risks.\",\n      \"priority_fix\": \"Critical\"\n    }\n  ],\n  \"attack_surface_summary\": \"The application has multiple vulnerabilities across frontend and backend components, including dependency management issues, missing security configurations, and critical container security flaws that could lead to exploitation.\",\n  \"top_3_actions\": [\n    \"Implement security headers and middleware to protect against common web vulnerabilities.\",\n    \"Ensure all containers run as non-root users to minimize security risks.\",\n    \"Sanitize user inputs to prevent XSS vulnerabilities.\"\n  ]\n}"
+    }
+  },
+  "best_practices": {
+    "frontend": [
+      {
+        "category": "Documentation",
+        "issue": "Missing frontend README.md",
+        "recommendation": "Add README.md with setup instructions and documentation"
+      },
+      {
+        "category": "Code Quality",
+        "issue": "No ESLint configuration",
+        "recommendation": "Add ESLint for code quality and consistency"
+      },
+      {
+        "category": "Testing",
+        "issue": "No test files found",
+        "recommendation": "Add unit tests for critical functionality"
+      },
+      {
+        "category": "Version Control",
+        "issue": "No .gitignore file",
+        "recommendation": "Add .gitignore to exclude node_modules and build artifacts"
+      }
+    ],
+    "backend": [
+      {
+        "category": "Observability",
+        "issue": "No logging configuration",
+        "recommendation": "Add structured logging for debugging and monitoring"
+      }
+    ],
+    "general": [
+      {
+        "category": "Legal",
+        "issue": "No LICENSE file",
+        "recommendation": "Add appropriate license file for your project"
+      },
+      {
+        "category": "Documentation",
+        "issue": "No CONTRIBUTING.md",
+        "recommendation": "Add contribution guidelines for collaborators"
+      }
+    ],
+    "compliance_score": 41,
+    "ai_enrichment": {
+      "prioritised_recommendations": [
+        {
+          "title": "Add README.md with setup instructions and documentation",
+          "effort": "Low",
+          "impact": "High",
+          "steps": [
+            "Create a new file named README.md in the root directory.",
+            "Include setup instructions, usage examples, and any relevant documentation."
+          ]
+        },
+        {
+          "title": "Add ESLint for code quality and consistency",
+          "effort": "Medium",
+          "impact": "Medium",
+          "steps": [
+            "Install ESLint as a development dependency.",
+            "Create an ESLint configuration file (.eslintrc.js).",
+            "Run ESLint on the codebase and fix any reported issues."
+          ]
+        },
+        {
+          "title": "Add unit tests for critical functionality",
+          "effort": "Medium",
+          "impact": "High",
+          "steps": [
+            "Identify critical functionalities that require testing.",
+            "Choose a testing framework (e.g., Jest, Mocha).",
+            "Write unit tests for the identified functionalities."
+          ]
+        },
+        {
+          "title": "Add .gitignore to exclude node_modules and build artifacts",
+          "effort": "Low",
+          "impact": "Medium",
+          "steps": [
+            "Create a .gitignore file in the root directory.",
+            "Add node_modules/ and any other build artifacts to the .gitignore file."
+          ]
+        },
+        {
+          "title": "Add structured logging for debugging and monitoring",
+          "effort": "Medium",
+          "impact": "High",
+          "steps": [
+            "Choose a logging library (e.g., Python's logging module).",
+            "Implement structured logging in the FastAPI application.",
+            "Test logging to ensure it captures necessary information."
+          ]
+        },
+        {
+          "title": "Add appropriate license file for your project",
+          "effort": "Low",
+          "impact": "Medium",
+          "steps": [
+            "Choose a suitable license for your project (e.g., MIT, Apache).",
+            "Create a LICENSE file in the root directory and include the license text."
+          ]
+        },
+        {
+          "title": "Add contribution guidelines for collaborators",
+          "effort": "Low",
+          "impact": "Medium",
+          "steps": [
+            "Create a CONTRIBUTING.md file in the root directory.",
+            "Outline the process for contributing, including coding standards and submission guidelines."
+          ]
+        }
+      ],
+      "maturity_level": "Beginner",
+      "quick_wins": [
+        "Create README.md with setup instructions.",
+        "Add .gitignore to exclude node_modules.",
+        "Add LICENSE file for project."
+      ]
+    }
+  },
+  "ai_recommendations": {
+    "pipeline_stages": [
+      {
+        "name": "Build",
+        "purpose": "Compile and prepare the application for deployment.",
+        "tools": [
+          "npm",
+          "pip"
+        ]
+      },
+      {
+        "name": "Test",
+        "purpose": "Run unit and integration tests to ensure code quality.",
+        "tools": [
+          "pytest",
+          "npm test"
+        ]
+      },
+      {
+        "name": "Lint",
+        "purpose": "Check code for stylistic errors and enforce coding standards.",
+        "tools": [
+          "flake8",
+          "npm run lint"
+        ]
+      },
+      {
+        "name": "Deploy",
+        "purpose": "Deploy the application to the production environment.",
+        "tools": [
+          "Docker",
+          "Uvicorn"
+        ]
+      }
+    ],
+    "testing_strategy": {
+      "unit": "Use pytest for unit testing the backend and npm test for frontend.",
+      "integration": "Integration tests can be added using pytest with FastAPI's test client.",
+      "e2e": "Consider using tools like Cypress or Selenium for end-to-end testing."
+    },
+    "deployment_recommendations": [
+      "Use Docker containers for both frontend and backend to ensure consistency across environments.",
+      "Implement CI/CD pipelines using tools like GitHub Actions or GitLab CI.",
+      "Consider using a cloud provider for hosting, such as AWS or Azure, to leverage scalability."
+    ],
+    "infra_optimisations": [
+      "Implement load balancing to handle increased traffic.",
+      "Use a CDN for serving static files to improve load times.",
+      "Optimize database connections and queries to enhance performance."
+    ],
+    "performance_tips": [
+      "Enable caching for frequently accessed data.",
+      "Minimize the size of assets (images, CSS, JS) to reduce load times.",
+      "Monitor application performance using APM tools like New Relic or Datadog."
+    ]
+  }
+}
