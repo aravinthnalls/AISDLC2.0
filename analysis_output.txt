@@ -1,0 +1,79 @@
+Traceback (most recent call last):
+  File "/home/runner/work/AISDLC2.0/AISDLC2.0/generate_workflow.py", line 379, in _call_openai_api
+    raise Exception(error_msg)
+Exception: OpenAI API Error: 429 - {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/runner/work/AISDLC2.0/AISDLC2.0/generate_workflow.py", line 1791, in main
+    analysis = generator._ai_enhance_analysis(analysis, fail_on_ai_error=generator.ai_mode_requested)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/AISDLC2.0/AISDLC2.0/generate_workflow.py", line 328, in _ai_enhance_analysis
+    raise e
+  File "/home/runner/work/AISDLC2.0/AISDLC2.0/generate_workflow.py", line 317, in _ai_enhance_analysis
+    ai_recommendations = self._call_openai_api(prompt, fail_on_error=fail_on_ai_error)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/AISDLC2.0/AISDLC2.0/generate_workflow.py", line 386, in _call_openai_api
+    raise Exception(error_msg)
+Exception: Failed to access OpenAI API: OpenAI API Error: 429 - {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+🤖 AI-Powered CI/CD Pipeline Generator
+==================================================
+🔧 Loaded config from pipeline_request.txt: instance_type=t2.micro, environment=production
+🤖 AI enhancement enabled with OpenAI integration
+🔍 Running analysis only...
+🔍 Analyzing project structure...
+🧠 AI analyzing project for intelligent recommendations...
+❌ OpenAI API Error: 429 - {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+❌ Failed to access OpenAI API: OpenAI API Error: 429 - {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+❌ AI enhancement failed in AI mode: Failed to access OpenAI API: OpenAI API Error: 429 - {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
+
+❌ Error: Failed to access OpenAI API: OpenAI API Error: 429 - {
+    "error": {
+        "message": "You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+    }
+}
+
