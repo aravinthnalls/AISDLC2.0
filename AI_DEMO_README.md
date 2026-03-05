@@ -17,12 +17,12 @@ This demo shows an AI agent that **watches your codebase, understands it, and ac
 
 ## The Agent: What It Is
 
-The agent is `generate_workflow.py` — a Python script that acts as an autonomous DevOps engineer. It is triggered by GitHub Actions and operates in two modes:
+The agent is `ai_devops_agent.py` — a Python script that acts as an autonomous DevOps engineer with comprehensive security and best practices analysis. It is triggered by GitHub Actions and operates in multiple modes:
 
 | Mode | Flag | What it does |
 |------|------|-------------|
-| Analysis | `--analyze-only` | Reads the codebase, detects stack, ports, frameworks, infra |
-| Suggestion | `--suggest-changes` | Writes a `suggestions.md` report with prioritized findings |
+| Analysis | `--analyze-only` | Reads codebase, detects stack/ports/frameworks, scans for vulnerabilities, checks best practices |
+| Suggestion | `--suggest-changes` | Generates comprehensive `suggestions.md` with security issues, structural problems, and best practice recommendations |
 | Generation | _(default)_ | Generates GitHub Actions workflows, Terraform, Docker configs |
 
 When an OpenAI API token is present (`OPENAI_API_TOKEN` secret), the agent upgrades from rule-based analysis to **LLM-powered recommendations** — asking GPT to reason about the specific tech stack and suggest pipeline optimizations, security hardening, and deployment strategies.
@@ -53,16 +53,20 @@ Point: a developer describes *what they want*, not *how to build it*.
 
 ### Step 3 — Show the agent analyzing the codebase
 ```bash
-python generate_workflow.py --analyze-only --verbose
+python ai_devops_agent.py --analyze-only --verbose
 ```
-The agent scans the repo and outputs:
+The agent performs comprehensive analysis and outputs:
 - Detected framework: FastAPI (Python)
 - Detected frontend: Vanilla JS
 - Ports: backend 8000, frontend 3000
 - Terraform: exists ✅
 - Dockerfiles: found ✅
+- **Security Risk Level**: 🟢 LOW / 🟡 MEDIUM / 🔴 HIGH
+- **Security Issues Found**: Count by category (Frontend, Backend, Infrastructure)
+- **Best Practices Score**: X% compliance
+- **Recommendations**: Top improvement suggestions
 
-Point: the agent reads code the same way a senior engineer would during an onboarding review.
+Point: the agent reads code like a senior engineer + security auditor + DevOps consultant — it's a comprehensive analysis, not just stack detection.
 
 ### Step 4 — Open a PR and watch the AI analyze it
 
@@ -84,8 +88,10 @@ Agent runs --analyze-only  →  detects issues
 Agent runs --suggest-changes  →  generates suggestions.md
         ↓
 Bot posts analysis as a PR comment with:
-  • High/Medium/Low priority issues
-  • Specific recommendations
+  • Security vulnerabilities (HIGH/MEDIUM/LOW)
+  • Structural issues  
+  • Best practices recommendations
+  • Compliance score
   • LLM insights (if OpenAI enabled)
 ```
 
@@ -124,6 +130,7 @@ This demonstrates the two-stage approach:
 
 ## What the Agent Can Detect (Rule-Based)
 
+### Structural Issues
 These run without any API key:
 
 - Missing `Dockerfile` for frontend or backend
@@ -131,6 +138,50 @@ These run without any API key:
 - No test file (`test_main.py`) when pytest is configured in CI
 - Missing Terraform configuration
 - Missing `requirements-dev.txt` (linting tools not declared)
+
+### Security Vulnerabilities
+
+**Frontend Security:**
+- XSS vulnerabilities (innerHTML usage without sanitization)
+- Code injection risks (eval() usage)
+- Hard-coded credentials in JavaScript
+- Missing package-lock.json (supply chain security)
+- Missing security middleware (helmet, CORS)
+
+**Backend Security:**
+- SQL injection vulnerabilities  
+- Hard-coded secrets in Python code
+- Unsafe deserialization (pickle usage)
+- Debug mode enabled in production
+- Missing CORS configuration
+
+**Infrastructure Security:**
+- Containers running as root user
+- Using `:latest` tags in Dockerfiles
+- .env files committed to repository
+- Exposed secrets in configuration
+
+### Best Practices Compliance
+
+**Frontend Best Practices:**
+- Missing README and documentation
+- No linting configuration (ESLint)
+- Missing test files
+- No .gitignore file
+
+**Backend Best Practices:**
+- Absence of test files
+- Missing dev dependencies separation
+- No type hints in Python code
+- Missing logging configuration
+
+**General Best Practices:**
+- No project README
+- Missing CI/CD configuration
+- No LICENSE file
+- No CONTRIBUTING guide
+
+The agent generates a **compliance score (0-100%)** based on detected best practices.
 
 ---
 
@@ -153,9 +204,11 @@ The LLM response is included verbatim in the `suggestions.md` PR body.
 | Concept | How it shows up in this demo |
 |---------|------------------------------|
 | **Autonomous code analysis** | Agent reads and understands the repo without being told what's in it |
+| **Security vulnerability scanning** | Automated detection of XSS, SQL injection, credential exposure, container security issues |
+| **Best practices enforcement** | Compliance scoring and recommendations for testing, documentation, and DevOps maturity |
 | **Context-aware generation** | Terraform, Docker, and workflow files are generated based on what the agent found, not from a template |
 | **Event-driven AI action** | Agent fires on real GitHub events (PR open **and** PR merge), not manual triggers |
-| **Shift-left testing** | Issues detected and surfaced as PR comments **before** merge — early feedback prevents bugs |
+| **Shift-left testing** | Security issues and best practice violations detected **before** merge — early feedback prevents vulnerabilities |
 | **Multi-stage automation** | Stage 1: analyze & comment on PR; Stage 2: auto-generate fixes after merge |
 | **Human-in-the-loop** | Agent comments on PRs and opens fix PRs — humans review and approve all changes |
 | **Graceful degradation** | Works without OpenAI (rule-based), upgrades with it (LLM reasoning) |
@@ -179,7 +232,7 @@ The LLM response is included verbatim in the `suggestions.md` PR body.
 ## Files Involved in the AI Loop
 
 ```
-generate_workflow.py          ← the agent
+ai_devops_agent.py            ← the comprehensive DevOps & security agent
 pipeline_request.txt          ← human intent input
 .github/workflows/
   ai-generate-workflow.yml    ← triggers agent on PR open AND PR merge (two stages)

@@ -1,17 +1,34 @@
 #!/usr/bin/env python3.11
 """
-AI-Powered CI/CD Pipeline Generator
-==================================
+AI-Powered DevOps Agent with Security & Best Practices Analysis
+================================================================
 
-This script automatically analyzes a codebase and generates a comprehensive
-CI/CD pipeline with GitHub Actions, including:
-- Code analysis and dependency detection
-- Automated testing and linting
+This script automatically analyzes a codebase and provides comprehensive
+DevOps automation with integrated security scanning, including:
+
+Code Analysis:
+- Language and framework detection
+- Dependency analysis and version tracking
+- Port and configuration detection
+
+Security Analysis:
+- Frontend vulnerability scanning (XSS, eval, credential exposure)
+- Backend security checks (SQL injection, pickle, debug mode)
+- Infrastructure security (Docker best practices, secret management)
+- Risk assessment and prioritization
+
+Best Practices:
+- Code quality checks (testing, linting, type hints)
+- Documentation requirements
+- CI/CD configuration validation
+- DevOps maturity scoring
+
+Pipeline Generation:
+- GitHub Actions workflows
 - Infrastructure as Code (Terraform)
 - Docker containerization
 - AWS EC2 deployment
-- Email notifications
-- ReadMe File
+- Automated testing and deployment
 
 """
 
@@ -44,7 +61,9 @@ class CodeAnalyzer:
             'backend': self._analyze_backend(),
             'infrastructure': self._analyze_infrastructure(),
             'docker': self._analyze_docker(),
-            'git': self._analyze_git()
+            'git': self._analyze_git(),
+            'security': self._analyze_security(),
+            'best_practices': self._analyze_best_practices()
         }
         
         self.analysis_results = analysis
@@ -211,6 +230,475 @@ class CodeAnalyzer:
                 print(f"Warning: Could not get git info: {e}")
         
         return analysis
+    
+    def _analyze_security(self) -> Dict:
+        """Analyze security vulnerabilities in frontend and backend code."""
+        vulnerabilities = {
+            'frontend': [],
+            'backend': [],
+            'infrastructure': [],
+            'overall_risk': 'LOW'
+        }
+        
+        # Frontend security checks
+        frontend_path = self.project_root / 'frontend'
+        if frontend_path.exists():
+            vulnerabilities['frontend'].extend(self._check_frontend_security(frontend_path))
+        
+        # Backend security checks
+        backend_path = self.project_root / 'backend'
+        if backend_path.exists():
+            vulnerabilities['backend'].extend(self._check_backend_security(backend_path))
+        
+        # Infrastructure security checks
+        vulnerabilities['infrastructure'].extend(self._check_infrastructure_security())
+        
+        # Determine overall risk level
+        all_vulns = vulnerabilities['frontend'] + vulnerabilities['backend'] + vulnerabilities['infrastructure']
+        high_severity = [v for v in all_vulns if v.get('severity') == 'HIGH']
+        medium_severity = [v for v in all_vulns if v.get('severity') == 'MEDIUM']
+        
+        if high_severity:
+            vulnerabilities['overall_risk'] = 'HIGH'
+        elif medium_severity:
+            vulnerabilities['overall_risk'] = 'MEDIUM'
+        else:
+            vulnerabilities['overall_risk'] = 'LOW'
+        
+        return vulnerabilities
+    
+    def _check_frontend_security(self, frontend_path: Path) -> List[Dict]:
+        """Check frontend code for common security vulnerabilities."""
+        issues = []
+        
+        # Check for outdated dependencies in package.json
+        package_json = frontend_path / 'package.json'
+        if package_json.exists():
+            try:
+                with open(package_json, 'r') as f:
+                    pkg_data = json.load(f)
+                    
+                # Check for package-lock.json (prevents supply chain attacks)
+                if not (frontend_path / 'package-lock.json').exists():
+                    issues.append({
+                        'severity': 'MEDIUM',
+                        'category': 'Dependency Management',
+                        'issue': 'Missing package-lock.json',
+                        'description': 'No package-lock.json file found - this can lead to inconsistent installations',
+                        'recommendation': 'Run `npm install` to generate package-lock.json and commit it'
+                    })
+                
+                # Check for security-related packages
+                deps = pkg_data.get('dependencies', {})
+                if not any(sec in str(deps) for sec in ['helmet', 'cors', 'csrf']):
+                    issues.append({
+                        'severity': 'MEDIUM',
+                        'category': 'Security Headers',
+                        'issue': 'Missing security middleware packages',
+                        'description': 'No security-related packages detected (helmet, cors, etc.)',
+                        'recommendation': 'Consider adding security headers and CORS configuration'
+                    })
+            except Exception as e:
+                print(f"Warning: Could not analyze package.json: {e}")
+        
+        # Check JavaScript files for common XSS vulnerabilities
+        js_files = list(frontend_path.glob('*.js'))
+        for js_file in js_files:
+            try:
+                content = js_file.read_text()
+                
+                # Check for eval() usage
+                if re.search(r'\beval\s*\(', content):
+                    issues.append({
+                        'severity': 'HIGH',
+                        'category': 'Code Injection',
+                        'issue': f'Dangerous eval() usage in {js_file.name}',
+                        'description': 'eval() can execute arbitrary code and is a security risk',
+                        'recommendation': 'Replace eval() with safer alternatives like JSON.parse()'
+                    })
+                
+                # Check for innerHTML usage (XSS risk)
+                if re.search(r'\.innerHTML\s*=', content):
+                    issues.append({
+                        'severity': 'MEDIUM',
+                        'category': 'XSS Vulnerability',
+                        'issue': f'Potential XSS risk with innerHTML in {js_file.name}',
+                        'description': 'innerHTML can execute scripts if user input is not sanitized',
+                        'recommendation': 'Use textContent or sanitize input with DOMPurify'
+                    })
+                
+                # Check for hard-coded credentials
+                if re.search(r'(password|api[_-]?key|secret|token)\s*[:=]\s*["\'][^"\']+["\']', content, re.IGNORECASE):
+                    issues.append({
+                        'severity': 'HIGH',
+                        'category': 'Credential Exposure',
+                        'issue': f'Potential hard-coded credentials in {js_file.name}',
+                        'description': 'Hard-coded secrets detected in code',
+                        'recommendation': 'Move credentials to environment variables'
+                    })
+                    
+            except Exception as e:
+                print(f"Warning: Could not scan {js_file}: {e}")
+        
+        return issues
+    
+    def _check_backend_security(self, backend_path: Path) -> List[Dict]:
+        """Check backend code for common security vulnerabilities."""
+        issues = []
+        
+        # Check requirements.txt for outdated/vulnerable packages
+        req_file = backend_path / 'requirements.txt'
+        if req_file.exists():
+            try:
+                with open(req_file, 'r') as f:
+                    requirements = f.read()
+                    
+                # Check for missing version pins
+                unpinned = re.findall(r'^([a-zA-Z0-9_-]+)\s*$', requirements, re.MULTILINE)
+                if unpinned:
+                    issues.append({
+                        'severity': 'MEDIUM',
+                        'category': 'Dependency Management',
+                        'issue': 'Unpinned dependencies detected',
+                        'description': f'Packages without version pins: {", ".join(unpinned[:3])}',
+                        'recommendation': 'Pin all dependencies to specific versions for reproducibility'
+                    })
+            except Exception as e:
+                print(f"Warning: Could not analyze requirements.txt: {e}")
+        
+        # Check Python files for security issues
+        py_files = list(backend_path.glob('*.py'))
+        for py_file in py_files:
+            try:
+                content = py_file.read_text()
+                
+                # Check for SQL injection vulnerabilities
+                if re.search(r'execute\s*\([^)]*[+%]\s*["\']|f["\'].*SELECT.*{', content):
+                    issues.append({
+                        'severity': 'HIGH',
+                        'category': 'SQL Injection',
+                        'issue': f'Potential SQL injection in {py_file.name}',
+                        'description': 'String concatenation in SQL queries detected',
+                        'recommendation': 'Use parameterized queries or ORM methods'
+                    })
+                
+                # Check for hard-coded secrets
+                if re.search(r'(password|api[_-]?key|secret|token)\s*=\s*["\'][^"\']+["\']', content, re.IGNORECASE):
+                    issues.append({
+                        'severity': 'HIGH',
+                        'category': 'Credential Exposure',
+                        'issue': f'Hard-coded credentials in {py_file.name}',
+                        'description': 'Sensitive credentials found in source code',
+                        'recommendation': 'Use environment variables and secret management'
+                    })
+                
+                # Check for pickle usage (deserialization vulnerability)
+                if re.search(r'import\s+pickle|pickle\.(load|loads)', content):
+                    issues.append({
+                        'severity': 'HIGH',
+                        'category': 'Deserialization',
+                        'issue': f'Unsafe deserialization with pickle in {py_file.name}',
+                        'description': 'pickle can execute arbitrary code during deserialization',
+                        'recommendation': 'Use JSON or other safe serialization formats'
+                    })
+                
+                # Check for debug mode in production
+                if re.search(r'debug\s*=\s*True|DEBUG\s*=\s*True', content):
+                    issues.append({
+                        'severity': 'MEDIUM',
+                        'category': 'Debug Mode',
+                        'issue': f'Debug mode enabled in {py_file.name}',
+                        'description': 'Debug mode can expose sensitive information',
+                        'recommendation': 'Use environment variables to control debug mode'
+                    })
+                
+                # Check for missing CORS configuration
+                if 'fastapi' in content.lower() or 'flask' in content.lower():
+                    if not re.search(r'CORS|CORSMiddleware', content):
+                        issues.append({
+                            'severity': 'LOW',
+                            'category': 'CORS Configuration',
+                            'issue': f'No CORS configuration in {py_file.name}',
+                            'description': 'CORS not configured - may cause frontend integration issues',
+                            'recommendation': 'Add CORSMiddleware with appropriate origins'
+                        })
+                        
+            except Exception as e:
+                print(f"Warning: Could not scan {py_file}: {e}")
+        
+        return issues
+    
+    def _check_infrastructure_security(self) -> List[Dict]:
+        """Check infrastructure configurations for security issues."""
+        issues = []
+        
+        # Check Docker configurations
+        dockerfiles = list(self.project_root.glob('**/Dockerfile'))
+        for dockerfile in dockerfiles:
+            try:
+                content = dockerfile.read_text()
+                
+                # Check for running as root
+                if not re.search(r'USER\s+\w+', content):
+                    issues.append({
+                        'severity': 'HIGH',
+                        'category': 'Container Security',
+                        'issue': f'Container runs as root in {dockerfile.relative_to(self.project_root)}',
+                        'description': 'No USER directive found - container runs as root by default',
+                        'recommendation': 'Add non-root user: USER appuser'
+                    })
+                
+                # Check for latest tag usage
+                if re.search(r'FROM\s+[^:]+:latest', content):
+                    issues.append({
+                        'severity': 'MEDIUM',
+                        'category': 'Container Security',
+                        'issue': f'Using :latest tag in {dockerfile.relative_to(self.project_root)}',
+                        'description': 'latest tag can lead to unpredictable builds',
+                        'recommendation': 'Pin base images to specific versions'
+                    })
+                    
+            except Exception as e:
+                print(f"Warning: Could not scan {dockerfile}: {e}")
+        
+        # Check for .env files (should not be committed)
+        env_files = list(self.project_root.glob('**/.env'))
+        for env_file in env_files:
+            if not env_file.name.endswith('.example'):
+                issues.append({
+                    'severity': 'HIGH',
+                    'category': 'Secret Management',
+                    'issue': f'Environment file in repository: {env_file.relative_to(self.project_root)}',
+                    'description': '.env files may contain secrets and should not be committed',
+                    'recommendation': 'Add .env to .gitignore and use .env.example for templates'
+                })
+        
+        return issues
+    
+    def _analyze_best_practices(self) -> Dict:
+        """Analyze code for best practices compliance."""
+        best_practices = {
+            'frontend': [],
+            'backend': [],
+            'general': [],
+            'compliance_score': 0
+        }
+        
+        total_checks = 0
+        passed_checks = 0
+        
+        # Frontend best practices
+        frontend_path = self.project_root / 'frontend'
+        if frontend_path.exists():
+            frontend_bp, frontend_score = self._check_frontend_best_practices(frontend_path)
+            best_practices['frontend'] = frontend_bp
+            total_checks += frontend_score['total']
+            passed_checks += frontend_score['passed']
+        
+        # Backend best practices
+        backend_path = self.project_root / 'backend'
+        if backend_path.exists():
+            backend_bp, backend_score = self._check_backend_best_practices(backend_path)
+            best_practices['backend'] = backend_bp
+            total_checks += backend_score['total']
+            passed_checks += backend_score['passed']
+        
+        # General best practices
+        general_bp, general_score = self._check_general_best_practices()
+        best_practices['general'] = general_bp
+        total_checks += general_score['total']
+        passed_checks += general_score['passed']
+        
+        # Calculate compliance score
+        if total_checks > 0:
+            best_practices['compliance_score'] = int((passed_checks / total_checks) * 100)
+        else:
+            best_practices['compliance_score'] = 100
+        
+        return best_practices
+    
+    def _check_frontend_best_practices(self, frontend_path: Path) -> Tuple[List[Dict], Dict]:
+        """Check frontend code for best practices."""
+        recommendations = []
+        total = 0
+        passed = 0
+        
+        # Check for README
+        total += 1
+        if (frontend_path / 'README.md').exists():
+            passed += 1
+        else:
+            recommendations.append({
+                'category': 'Documentation',
+                'issue': 'Missing frontend README.md',
+                'recommendation': 'Add README.md with setup instructions and documentation'
+            })
+        
+        # Check for ESLint configuration
+        total += 1
+        if (frontend_path / '.eslintrc.js').exists() or (frontend_path / '.eslintrc.json').exists():
+            passed += 1
+        else:
+            recommendations.append({
+                'category': 'Code Quality',
+                'issue': 'No ESLint configuration',
+                'recommendation': 'Add ESLint for code quality and consistency'
+            })
+        
+        # Check for test files
+        total += 1
+        test_files = list(frontend_path.glob('**/*.test.js')) + list(frontend_path.glob('**/*.spec.js'))
+        if test_files:
+            passed += 1
+        else:
+            recommendations.append({
+                'category': 'Testing',
+                'issue': 'No test files found',
+                'recommendation': 'Add unit tests for critical functionality'
+            })
+        
+        # Check for .gitignore
+        total += 1
+        if (frontend_path / '.gitignore').exists():
+            passed += 1
+        else:
+            recommendations.append({
+                'category': 'Version Control',
+                'issue': 'No .gitignore file',
+                'recommendation': 'Add .gitignore to exclude node_modules and build artifacts'
+            })
+        
+        return recommendations, {'total': total, 'passed': passed}
+    
+    def _check_backend_best_practices(self, backend_path: Path) -> Tuple[List[Dict], Dict]:
+        """Check backend code for best practices."""
+        recommendations = []
+        total = 0
+        passed = 0
+        
+        # Check for test files
+        total += 1
+        test_files = list(backend_path.glob('**/test_*.py'))
+        if test_files:
+            passed += 1
+        else:
+            recommendations.append({
+                'category': 'Testing',
+                'issue': 'No test files found',
+                'recommendation': 'Add pytest tests for API endpoints and business logic'
+            })
+        
+        # Check for requirements-dev.txt
+        total += 1
+        if (backend_path / 'requirements-dev.txt').exists():
+            passed += 1
+        else:
+            recommendations.append({
+                'category': 'Dependency Management',
+                'issue': 'Missing requirements-dev.txt',
+                'recommendation': 'Separate development dependencies (pytest, flake8) from production'
+            })
+        
+        # Check for type hints in Python files
+        total += 1
+        py_files = list(backend_path.glob('*.py'))
+        has_type_hints = False
+        for py_file in py_files:
+            try:
+                content = py_file.read_text()
+                if re.search(r':\s*(str|int|bool|float|Dict|List|Optional|Tuple)', content):
+                    has_type_hints = True
+                    passed += 1
+                    break
+            except Exception:
+                pass
+        
+        if not has_type_hints and py_files:
+            recommendations.append({
+                'category': 'Code Quality',
+                'issue': 'No type hints detected',
+                'recommendation': 'Add type hints for better code maintainability and IDE support'
+            })
+        
+        # Check for logging configuration
+        total += 1
+        has_logging = False
+        for py_file in py_files:
+            try:
+                content = py_file.read_text()
+                if 'import logging' in content or 'from logging import' in content:
+                    has_logging = True
+                    passed += 1
+                    break
+            except Exception:
+                pass
+        
+        if not has_logging and py_files:
+            recommendations.append({
+                'category': 'Observability',
+                'issue': 'No logging configuration',
+                'recommendation': 'Add structured logging for debugging and monitoring'
+            })
+        
+        return recommendations, {'total': total, 'passed': passed}
+    
+    def _check_general_best_practices(self) -> Tuple[List[Dict], Dict]:
+        """Check general project best practices."""
+        recommendations = []
+        total = 0
+        passed = 0
+        
+        # Check for main README
+        total += 1
+        if (self.project_root / 'README.md').exists():
+            passed += 1
+        else:
+            recommendations.append({
+                'category': 'Documentation',
+                'issue': 'Missing project README.md',
+                'recommendation': 'Add comprehensive README with project overview and setup guide'
+            })
+        
+        # Check for CI/CD configuration
+        total += 1
+        ci_configs = [
+            self.project_root / '.github' / 'workflows',
+            self.project_root / '.gitlab-ci.yml',
+            self.project_root / '.circleci',
+            self.project_root / 'Jenkinsfile'
+        ]
+        if any(path.exists() for path in ci_configs):
+            passed += 1
+        else:
+            recommendations.append({
+                'category': 'DevOps',
+                'issue': 'No CI/CD configuration',
+                'recommendation': 'Add automated testing and deployment pipelines'
+            })
+        
+        # Check for LICENSE file
+        total += 1
+        if (self.project_root / 'LICENSE').exists():
+            passed += 1
+        else:
+            recommendations.append({
+                'category': 'Legal',
+                'issue': 'No LICENSE file',
+                'recommendation': 'Add appropriate license file for your project'
+            })
+        
+        # Check for CONTRIBUTING guide
+        total += 1
+        if (self.project_root / 'CONTRIBUTING.md').exists():
+            passed += 1
+        else:
+            recommendations.append({
+                'category': 'Documentation',
+                'issue': 'No CONTRIBUTING.md',
+                'recommendation': 'Add contribution guidelines for collaborators'
+            })
+        
+        return recommendations, {'total': total, 'passed': passed}
 
 class PipelineGenerator:
     """Generates CI/CD pipeline components based on code analysis."""
@@ -489,6 +977,69 @@ Respond in JSON format with specific, actionable recommendations.
             output.append(f"   Branch: {git.get('current_branch', 'Unknown')}")
             if git.get('remote_url'):
                 output.append(f"   Repository: {git.get('remote_url')}")
+        
+        # Security Analysis
+        security = analysis.get('security', {})
+        if security:
+            output.append("\n🔒 Security Analysis:")
+            risk_level = security.get('overall_risk', 'UNKNOWN')
+            risk_emoji = '🔴' if risk_level == 'HIGH' else '🟡' if risk_level == 'MEDIUM' else '🟢'
+            output.append(f"   {risk_emoji} Overall Risk Level: {risk_level}")
+            
+            total_vulns = len(security.get('frontend', [])) + len(security.get('backend', [])) + len(security.get('infrastructure', []))
+            if total_vulns > 0:
+                output.append(f"   ⚠️  Total Issues Found: {total_vulns}")
+                
+                # Frontend vulnerabilities
+                frontend_vulns = security.get('frontend', [])
+                if frontend_vulns:
+                    output.append(f"\n   Frontend Issues ({len(frontend_vulns)}):")
+                    for vuln in frontend_vulns[:3]:  # Show top 3
+                        output.append(f"      • [{vuln.get('severity')}] {vuln.get('issue')}")
+                
+                # Backend vulnerabilities
+                backend_vulns = security.get('backend', [])
+                if backend_vulns:
+                    output.append(f"\n   Backend Issues ({len(backend_vulns)}):")
+                    for vuln in backend_vulns[:3]:  # Show top 3
+                        output.append(f"      • [{vuln.get('severity')}] {vuln.get('issue')}")
+                
+                # Infrastructure vulnerabilities
+                infra_vulns = security.get('infrastructure', [])
+                if infra_vulns:
+                    output.append(f"\n   Infrastructure Issues ({len(infra_vulns)}):")
+                    for vuln in infra_vulns[:3]:  # Show top 3
+                        output.append(f"      • [{vuln.get('severity')}] {vuln.get('issue')}")
+            else:
+                output.append("   ✅ No security issues detected")
+        
+        # Best Practices Analysis
+        best_practices = analysis.get('best_practices', {})
+        if best_practices:
+            output.append("\n📋 Best Practices Compliance:")
+            score = best_practices.get('compliance_score', 0)
+            score_emoji = '🟢' if score >= 80 else '🟡' if score >= 60 else '🔴'
+            output.append(f"   {score_emoji} Compliance Score: {score}%")
+            
+            total_recommendations = (
+                len(best_practices.get('frontend', [])) + 
+                len(best_practices.get('backend', [])) + 
+                len(best_practices.get('general', []))
+            )
+            
+            if total_recommendations > 0:
+                output.append(f"   💡 Recommendations: {total_recommendations}")
+                
+                # Show top recommendations
+                all_recs = []
+                all_recs.extend(best_practices.get('frontend', []))
+                all_recs.extend(best_practices.get('backend', []))
+                all_recs.extend(best_practices.get('general', []))
+                
+                for rec in all_recs[:5]:  # Show top 5
+                    output.append(f"      • {rec.get('issue')}")
+            else:
+                output.append("   ✅ All best practices checks passed")
         
         return "\n".join(output)
     
@@ -799,7 +1350,10 @@ Respond in JSON format with specific, actionable recommendations.
         backend = analysis.get('backend', {})
         frontend = analysis.get('frontend', {})
         infra = analysis.get('infrastructure', {})
+        security = analysis.get('security', {})
+        best_practices = analysis.get('best_practices', {})
 
+        # Structural issues
         if not docker.get('dockerfiles'):
             suggestions.append((
                 'Missing Dockerfiles',
@@ -829,7 +1383,7 @@ Respond in JSON format with specific, actionable recommendations.
                 'Missing Terraform configuration',
                 'Medium',
                 'No terraform/ directory found. AWS deployment will not work.',
-                '- Run `python generate_workflow.py` to auto-generate Terraform files'
+                '- Run `python ai_devops_agent.py` to auto-generate Terraform files'
             ))
 
         if backend.get('exists'):
@@ -842,19 +1396,98 @@ Respond in JSON format with specific, actionable recommendations.
                     '- Create `backend/requirements-dev.txt` with `flake8` and `pytest`'
                 ))
 
+        # Security vulnerabilities
+        security_issues = []
+        if security:
+            for vuln in security.get('frontend', []):
+                security_issues.append((
+                    f"[Frontend] {vuln.get('issue')}",
+                    vuln.get('severity', 'MEDIUM'),
+                    vuln.get('description', ''),
+                    vuln.get('recommendation', '')
+                ))
+            
+            for vuln in security.get('backend', []):
+                security_issues.append((
+                    f"[Backend] {vuln.get('issue')}",
+                    vuln.get('severity', 'MEDIUM'),
+                    vuln.get('description', ''),
+                    vuln.get('recommendation', '')
+                ))
+            
+            for vuln in security.get('infrastructure', []):
+                security_issues.append((
+                    f"[Infrastructure] {vuln.get('issue')}",
+                    vuln.get('severity', 'MEDIUM'),
+                    vuln.get('description', ''),
+                    vuln.get('recommendation', '')
+                ))
+
+        # Best practices recommendations
+        bp_recommendations = []
+        if best_practices:
+            for rec in best_practices.get('frontend', []):
+                bp_recommendations.append((
+                    f"[Frontend] {rec.get('issue')}",
+                    'Low',
+                    f"{rec.get('category', 'General')}",
+                    rec.get('recommendation', '')
+                ))
+            
+            for rec in best_practices.get('backend', []):
+                bp_recommendations.append((
+                    f"[Backend] {rec.get('issue')}",
+                    'Low',
+                    f"{rec.get('category', 'General')}",
+                    rec.get('recommendation', '')
+                ))
+            
+            for rec in best_practices.get('general', []):
+                bp_recommendations.append((
+                    f"[Project] {rec.get('issue')}",
+                    'Low',
+                    f"{rec.get('category', 'General')}",
+                    rec.get('recommendation', '')
+                ))
+
         # Include AI recommendations if available
         ai_recs = analysis.get('ai_recommendations', {})
 
         lines = [
-            '# AI Pipeline Analysis — Suggested Changes',
+            '# AI DevOps Analysis — Comprehensive Report',
             '',
             f'> Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}',
-            f'> Triggered by: post-merge analysis',
+            f'> Triggered by: post-analysis',
             '',
         ]
 
+        # Security Section
+        if security_issues:
+            lines.append('## 🔒 Security Vulnerabilities')
+            lines.append('')
+            risk_level = security.get('overall_risk', 'UNKNOWN')
+            risk_emoji = '🔴' if risk_level == 'HIGH' else '🟡' if risk_level == 'MEDIUM' else '🟢'
+            lines.append(f'**Overall Risk Level**: {risk_emoji} {risk_level}')
+            lines.append('')
+            
+            # Sort by severity
+            high_priority = [s for s in security_issues if s[1] == 'HIGH']
+            medium_priority = [s for s in security_issues if s[1] == 'MEDIUM']
+            low_priority = [s for s in security_issues if s[1] == 'LOW']
+            
+            for title, severity, description, fix in high_priority + medium_priority + low_priority:
+                lines.append(f'### {title}')
+                lines.append(f'- **Severity**: {severity}')
+                lines.append(f'- **Issue**: {description}')
+                lines.append(f'- **Recommendation**: {fix}')
+                lines.append('')
+        else:
+            lines.append('## ✅ No Security Issues Found')
+            lines.append('')
+
+        # Structural Issues Section
         if suggestions:
-            lines.append('## 🔍 Issues Found')
+            lines.append('## 🔧 Structural Issues')
             lines.append('')
             for title, severity, description, fix in suggestions:
                 lines.append(f'### {title}')
@@ -862,14 +1495,25 @@ Respond in JSON format with specific, actionable recommendations.
                 lines.append(f'- **Issue**: {description}')
                 lines.append(f'- **Suggested fix**: {fix}')
                 lines.append('')
-        else:
-            lines.append('## ✅ No structural issues found')
-            lines.append('')
-            lines.append('The project structure looks good. No changes required.')
-            lines.append('')
 
+        # Best Practices Section
+        if bp_recommendations:
+            lines.append('## 📋 Best Practices Recommendations')
+            lines.append('')
+            score = best_practices.get('compliance_score', 0)
+            score_emoji = '🟢' if score >= 80 else '🟡' if score >= 60 else '🔴'
+            lines.append(f'**Compliance Score**: {score_emoji} {score}%')
+            lines.append('')
+            
+            for title, severity, category, recommendation in bp_recommendations:
+                lines.append(f'### {title}')
+                lines.append(f'- **Category**: {category}')
+                lines.append(f'- **Recommendation**: {recommendation}')
+                lines.append('')
+
+        # AI Recommendations Section
         if ai_recs:
-            lines.append('## 🤖 AI Recommendations')
+            lines.append('## 🤖 AI-Powered Insights')
             lines.append('')
             if isinstance(ai_recs, dict) and 'recommendations' in ai_recs:
                 lines.append(ai_recs['recommendations'])
@@ -879,6 +1523,7 @@ Respond in JSON format with specific, actionable recommendations.
                 lines.append('```')
             lines.append('')
 
+        # Project Summary
         lines.append('## 📊 Project Summary')
         lines.append('')
         lines.append(f'- **Frontend**: {frontend.get("framework", "unknown")} on port {frontend.get("port", "N/A")}')
@@ -886,11 +1531,18 @@ Respond in JSON format with specific, actionable recommendations.
         lines.append(f'- **Terraform**: {"✅ exists" if infra.get("terraform_exists") else "❌ missing"}')
         lines.append(f'- **Docker Compose**: {"✅ exists" if docker.get("compose_exists") else "❌ missing"}')
         lines.append(f'- **Dockerfiles**: {len(docker.get("dockerfiles", []))} found')
+        lines.append(f'- **Security Risk**: {security.get("overall_risk", "N/A")}')
+        lines.append(f'- **Best Practices Score**: {best_practices.get("compliance_score", "N/A")}%')
 
         suggestions_path = self.project_root / 'suggestions.md'
         suggestions_path.write_text('\n'.join(lines))
-        print(f'📝 Suggestions written to {suggestions_path}')
-        print(f'   Found {len(suggestions)} issue(s) to address.')
+        print(f'📝 Comprehensive analysis written to {suggestions_path}')
+        
+        total_issues = len(suggestions) + len(security_issues) + len(bp_recommendations)
+        print(f'   Found {total_issues} total finding(s):')
+        print(f'     • Security Issues: {len(security_issues)}')
+        print(f'     • Structural Issues: {len(suggestions)}')
+        print(f'     • Best Practice Recommendations: {len(bp_recommendations)}')
 
     def _generate_ai_workflow_trigger(self):
         """Generate the AI workflow trigger."""
@@ -928,8 +1580,8 @@ Respond in JSON format with specific, actionable recommendations.
                             'run': 'pip install pyyaml'
                         },
                         {
-                            'name': 'Run AI Pipeline Generator',
-                            'run': 'python generate_workflow.py --auto-commit'
+                            'name': 'Run AI DevOps Agent',
+                            'run': 'python ai_devops_agent.py --auto-commit'
                         },
                         {
                             'name': 'Create Pull Request',
@@ -1494,14 +2146,16 @@ This project demonstrates **AI-assisted DevOps automation** with a complete CI/C
    terraform output application_urls
    ```
 
-## 🤖 AI Pipeline Generator
+## 🤖 AI DevOps & Security Agent
 
-The `generate_workflow.py` script automatically:
+The `ai_devops_agent.py` script automatically:
 
 ### Code Analysis
 - Detects programming languages and frameworks
 - Identifies dependencies and test commands
 - Analyzes port configurations
+- **Scans for security vulnerabilities**
+- **Checks best practices compliance**
 - Suggests optimal CI/CD strategies
 
 ### Infrastructure Generation
@@ -1520,13 +2174,13 @@ The `generate_workflow.py` script automatically:
 
 ```bash
 # Run the AI generator
-python generate_workflow.py
+python ai_devops_agent.py
 
 # Run with auto-commit (for CI/CD)
-python generate_workflow.py --auto-commit
+python ai_devops_agent.py --auto-commit
 
 # Analyze only (no file generation)
-python generate_workflow.py --analyze-only
+python ai_devops_agent.py --analyze-only
 ```
 
 ## 📁 Project Structure
@@ -1536,7 +2190,7 @@ python generate_workflow.py --analyze-only
 ├── README.md                          # This file
 ├── VERSION                            # Version tracking
 ├── pipeline_request.txt              # AI pipeline configuration
-├── generate_workflow.py              # AI pipeline generator
+├── ai_devops_agent.py               # AI DevOps & security agent
 ├── docker-compose.yml               # Local development setup
 ├── frontend/                        # Frontend application
 │   ├── index.html                  # Main HTML file
@@ -1726,17 +2380,18 @@ This project is licensed under the MIT License - see the LICENSE file for detail
         return '0.1.0'
 
 def main():
-    """Main entry point for the AI pipeline generator."""
+    """Main entry point for the AI DevOps & Security Agent."""
     parser = argparse.ArgumentParser(
-        description='AI-Powered CI/CD Pipeline Generator',
+        description='AI-Powered DevOps Agent with Security & Best Practices Analysis',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 Examples:
-  python generate_workflow.py                                    # Generate complete pipeline
-  python generate_workflow.py --analyze-only                     # Analyze code only
-  python generate_workflow.py --auto-commit                      # Generate and commit changes
-  python generate_workflow.py --openai-token YOUR_TOKEN          # Use AI enhancement with OpenAI
-  OPENAI_API_TOKEN=your_token python generate_workflow.py        # Use AI via environment variable
+  python ai_devops_agent.py                                    # Generate complete pipeline
+  python ai_devops_agent.py --analyze-only                     # Analyze code, security & best practices
+  python ai_devops_agent.py --auto-commit                      # Generate and commit changes
+  python ai_devops_agent.py --suggest-changes                  # Generate suggestions.md report
+  python ai_devops_agent.py --openai-token YOUR_TOKEN          # Use AI enhancement with OpenAI
+  OPENAI_API_TOKEN=your_token python ai_devops_agent.py        # Use AI via environment variable
         '''
     )
     

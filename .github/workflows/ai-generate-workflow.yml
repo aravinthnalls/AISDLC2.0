@@ -35,11 +35,11 @@ jobs:
         env:
           OPENAI_API_TOKEN: ${{ secrets.OPENAI_API_TOKEN }}
         run: |
-          python generate_workflow.py --analyze-only --verbose > analysis_output.txt 2>&1 || true
+          python ai_devops_agent.py --analyze-only --verbose > analysis_output.txt 2>&1 || true
 
       - name: Generate suggestions report
         run: |
-          python generate_workflow.py --suggest-changes || true
+          python ai_devops_agent.py --suggest-changes || true
 
       - name: Prepare comment body
         id: prepare_comment
@@ -93,12 +93,12 @@ jobs:
         env:
           OPENAI_API_TOKEN: ${{ secrets.OPENAI_API_TOKEN }}
         run: |
-          python generate_workflow.py --analyze-only --verbose > analysis_output.txt 2>&1 || true
+          python ai_devops_agent.py --analyze-only --verbose > analysis_output.txt 2>&1 || true
           cat analysis_output.txt
 
       - name: Generate suggestions and fixes
         run: |
-          python generate_workflow.py --suggest-changes
+          python ai_devops_agent.py --suggest-changes
 
       - name: Check for suggested changes
         id: check_changes
@@ -166,7 +166,7 @@ jobs:
 
       - name: Generate suggestions
         run: |
-          python generate_workflow.py --suggest-changes
+          python ai_devops_agent.py --suggest-changes
 
       - name: Display results
         run: |

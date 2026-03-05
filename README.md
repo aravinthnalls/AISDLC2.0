@@ -75,7 +75,7 @@ This project demonstrates **AI-assisted DevOps automation** with a complete CI/C
 
 ## 🤖 AI Pipeline Generator
 
-The `generate_workflow.py` script automatically:
+The `ai_devops_agent.py` script automatically:
 
 ### Code Analysis
 - Detects programming languages and frameworks
@@ -99,16 +99,16 @@ The `generate_workflow.py` script automatically:
 
 ```bash
 # Run the AI generator
-python generate_workflow.py
+python ai_devops_agent.py
 
 # Run with auto-commit (for CI/CD)
-python generate_workflow.py --auto-commit
+python ai_devops_agent.py --auto-commit
 
 # Analyze only (no file generation)
-python generate_workflow.py --analyze-only
+python ai_devops_agent.py --analyze-only
 
 # Generate suggestions.md with recommended changes (used by CI after PR merge)
-python generate_workflow.py --suggest-changes
+python ai_devops_agent.py --suggest-changes
 ```
 
 ## 📁 Project Structure
@@ -118,7 +118,7 @@ python generate_workflow.py --suggest-changes
 ├── README.md                          # This file
 ├── VERSION                            # Version tracking
 ├── pipeline_request.txt              # AI pipeline configuration
-├── generate_workflow.py              # AI pipeline generator
+├── ai_devops_agent.py               # AI DevOps & security agent
 ├── docker-compose.yml               # Local development setup
 ├── frontend/                        # Frontend application
 │   ├── index.html                  # Main HTML file
@@ -152,7 +152,7 @@ PR merged into main
        ↓
 [ai-generate-workflow.yml triggers]
        ↓
-generate_workflow.py --suggest-changes runs
+ai_devops_agent.py --suggest-changes runs
        ↓
 suggestions.md written with findings
        ↓
