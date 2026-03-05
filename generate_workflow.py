@@ -11,8 +11,8 @@ CI/CD pipeline with GitHub Actions, including:
 - Docker containerization
 - AWS EC2 deployment
 - Email notifications
+- ReadMe File
 
-Author: AI-Generated Pipeline System
 """
 
 import os
@@ -792,6 +792,106 @@ Respond in JSON format with specific, actionable recommendations.
         
         return job
     
+    def suggest_changes(self, analysis: Dict):
+        """Write suggestions.md with actionable recommendations based on analysis."""
+        suggestions = []
+        docker = analysis.get('docker', {})
+        backend = analysis.get('backend', {})
+        frontend = analysis.get('frontend', {})
+        infra = analysis.get('infrastructure', {})
+
+        if not docker.get('dockerfiles'):
+            suggestions.append((
+                'Missing Dockerfiles',
+                'High',
+                'No Dockerfiles found for frontend or backend. `docker-compose up` will fail.',
+                '- Create `backend/Dockerfile` and `frontend/Dockerfile`'
+            ))
+
+        if not docker.get('compose_exists'):
+            suggestions.append((
+                'Missing docker-compose.yml',
+                'High',
+                'No Docker Compose file found. Local development setup is incomplete.',
+                '- Create `docker-compose.yml` with frontend and backend services'
+            ))
+
+        if backend.get('exists') and not (self.project_root / 'backend' / 'test_main.py').exists():
+            suggestions.append((
+                'No backend tests detected',
+                'Medium',
+                'No test file found in backend/. CI pipeline runs pytest but has nothing to test.',
+                '- Add `backend/test_main.py` with basic health check and endpoint tests'
+            ))
+
+        if not infra.get('terraform_exists'):
+            suggestions.append((
+                'Missing Terraform configuration',
+                'Medium',
+                'No terraform/ directory found. AWS deployment will not work.',
+                '- Run `python generate_workflow.py` to auto-generate Terraform files'
+            ))
+
+        if backend.get('exists'):
+            req_file = self.project_root / 'backend' / 'requirements-dev.txt'
+            if not req_file.exists():
+                suggestions.append((
+                    'No dev dependencies file',
+                    'Low',
+                    'requirements-dev.txt is missing. Linting tools (flake8) are not declared.',
+                    '- Create `backend/requirements-dev.txt` with `flake8` and `pytest`'
+                ))
+
+        # Include AI recommendations if available
+        ai_recs = analysis.get('ai_recommendations', {})
+
+        lines = [
+            '# AI Pipeline Analysis — Suggested Changes',
+            '',
+            f'> Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}',
+            f'> Triggered by: post-merge analysis',
+            '',
+        ]
+
+        if suggestions:
+            lines.append('## 🔍 Issues Found')
+            lines.append('')
+            for title, severity, description, fix in suggestions:
+                lines.append(f'### {title}')
+                lines.append(f'- **Severity**: {severity}')
+                lines.append(f'- **Issue**: {description}')
+                lines.append(f'- **Suggested fix**: {fix}')
+                lines.append('')
+        else:
+            lines.append('## ✅ No structural issues found')
+            lines.append('')
+            lines.append('The project structure looks good. No changes required.')
+            lines.append('')
+
+        if ai_recs:
+            lines.append('## 🤖 AI Recommendations')
+            lines.append('')
+            if isinstance(ai_recs, dict) and 'recommendations' in ai_recs:
+                lines.append(ai_recs['recommendations'])
+            else:
+                lines.append('```json')
+                lines.append(json.dumps(ai_recs, indent=2))
+                lines.append('```')
+            lines.append('')
+
+        lines.append('## 📊 Project Summary')
+        lines.append('')
+        lines.append(f'- **Frontend**: {frontend.get("framework", "unknown")} on port {frontend.get("port", "N/A")}')
+        lines.append(f'- **Backend**: {backend.get("framework", "unknown")} on port {backend.get("port", "N/A")}')
+        lines.append(f'- **Terraform**: {"✅ exists" if infra.get("terraform_exists") else "❌ missing"}')
+        lines.append(f'- **Docker Compose**: {"✅ exists" if docker.get("compose_exists") else "❌ missing"}')
+        lines.append(f'- **Dockerfiles**: {len(docker.get("dockerfiles", []))} found')
+
+        suggestions_path = self.project_root / 'suggestions.md'
+        suggestions_path.write_text('\n'.join(lines))
+        print(f'📝 Suggestions written to {suggestions_path}')
+        print(f'   Found {len(suggestions)} issue(s) to address.')
+
     def _generate_ai_workflow_trigger(self):
         """Generate the AI workflow trigger."""
         print("🤖 Generating AI workflow trigger...")
@@ -861,10 +961,13 @@ Respond in JSON format with specific, actionable recommendations.
         }
         
         workflow_path = workflow_dir / 'ai-generate-workflow.yml'
-        with open(workflow_path, 'w') as f:
-            yaml.dump(ai_workflow, f, default_flow_style=False, sort_keys=False)
-        
-        print(f"✅ Created AI workflow: {workflow_path}")
+        # Only write if it doesn't already exist — the canonical version is managed separately
+        if not workflow_path.exists():
+            with open(workflow_path, 'w') as f:
+                yaml.dump(ai_workflow, f, default_flow_style=False, sort_keys=False)
+            print(f"✅ Created AI workflow: {workflow_path}")
+        else:
+            print(f"✅ AI workflow already exists, skipping: {workflow_path}")
     
     def _ensure_terraform_infrastructure(self, analysis: Dict):
         """Ensure Terraform infrastructure exists."""
@@ -1660,7 +1763,11 @@ Examples:
     parser.add_argument('--openai-token',
                        type=str,
                        help='OpenAI API token for AI-enhanced pipeline generation')
-    
+
+    parser.add_argument('--suggest-changes',
+                       action='store_true',
+                       help='Analyze project and write suggestions.md with recommended changes')
+
     args = parser.parse_args()
     
     print("🤖 AI-Powered CI/CD Pipeline Generator")
@@ -1672,7 +1779,13 @@ Examples:
         
         generator = PipelineGenerator(args.project_root, args.config_file, openai_token)
         
-        if args.analyze_only:
+        if args.suggest_changes:
+            print("🔍 Generating suggestions report...")
+            analysis = generator.analyzer.analyze_project()
+            analysis = generator._ai_enhance_analysis(analysis, fail_on_ai_error=generator.ai_mode_requested)
+            generator.suggest_changes(analysis)
+
+        elif args.analyze_only:
             print("🔍 Running analysis only...")
             analysis = generator.analyzer.analyze_project()
             analysis = generator._ai_enhance_analysis(analysis, fail_on_ai_error=generator.ai_mode_requested)
