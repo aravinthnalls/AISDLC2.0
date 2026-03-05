@@ -98,6 +98,12 @@ jobs:
           python ai_devops_agent.py --analyze-only --verbose > analysis_output.txt 2>&1 || true
           cat analysis_output.txt
 
+      - name: Generate missing infrastructure and pipeline files
+        env:
+          OPENAI_API_TOKEN: ${{ secrets.OPENAI_API_TOKEN }}
+        run: |
+          python ai_devops_agent.py
+
       - name: Generate suggestions and fixes
         env:
           OPENAI_API_TOKEN: ${{ secrets.OPENAI_API_TOKEN }}

@@ -2208,13 +2208,53 @@ target_platform = "{self.config.get('target', 'aws_ec2')}"
         print(f"   📄 Created terraform.tfvars with {environment} environment and {instance_type} instance")
     
     def _ensure_docker_configuration(self, analysis: Dict):
-        """Ensure Docker configuration exists."""
+        """Ensure Docker configuration exists, generating missing Dockerfiles."""
         if analysis['docker']['compose_exists']:
             print("✅ Docker Compose configuration already exists")
-        
-        # Check if Dockerfiles exist for frontend and backend
+
         if not analysis['docker']['dockerfiles']:
-            print("❌ No Dockerfiles found - this should have been created earlier")
+            print("🐳 No Dockerfiles found — generating...")
+            self._create_backend_dockerfile(analysis)
+            self._create_frontend_dockerfile(analysis)
+
+    def _create_backend_dockerfile(self, analysis: Dict):
+        """Generate backend/Dockerfile for Python/FastAPI."""
+        backend_path = self.project_root / 'backend'
+        if not backend_path.exists():
+            return
+        dockerfile_path = backend_path / 'Dockerfile'
+        if dockerfile_path.exists():
+            return
+        port = analysis['backend'].get('port', 8000)
+        content = f'''FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE {port}
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "{port}"]
+'''
+        dockerfile_path.write_text(content)
+        print(f"✅ Created backend/Dockerfile (port {port})")
+
+    def _create_frontend_dockerfile(self, analysis: Dict):
+        """Generate frontend/Dockerfile for nginx static serving."""
+        frontend_path = self.project_root / 'frontend'
+        if not frontend_path.exists():
+            return
+        dockerfile_path = frontend_path / 'Dockerfile'
+        if dockerfile_path.exists():
+            return
+        port = analysis['frontend'].get('port', 3000)
+        content = f'''FROM nginx:1.25-alpine
+COPY . /usr/share/nginx/html
+EXPOSE {port}
+USER nginx
+'''
+        dockerfile_path.write_text(content)
+        print(f"✅ Created frontend/Dockerfile (port {port})")
     
     def _update_readme(self, analysis: Dict):
         """Update README.md with comprehensive documentation."""
