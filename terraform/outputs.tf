@@ -36,8 +36,23 @@ output "frontend_url" {
   value       = "http://${aws_eip.qr_generator_eip.public_ip}:${var.frontend_port}"
 }
 
+# Convenience alias used by CI deploy job
+output "public_ip" {
+  description = "Public IP address (alias for CI pipeline)"
+  value       = aws_eip.qr_generator_eip.public_ip
+}
+
+# Combined application URLs map (used by deploy job)
+output "application_urls" {
+  description = "Application endpoint URLs"
+  value = jsonencode({
+    frontend    = "http://${aws_eip.qr_generator_eip.public_ip}:${var.frontend_port}"
+    backend_api = "http://${aws_eip.qr_generator_eip.public_ip}:${var.backend_port}"
+  })
+}
+
 # SSH Access
 output "ssh_command" {
   description = "SSH command to connect to the instance"
-  value       = "ssh -i ~/.ssh/${var.key_pair_name}.pem ec2-user@${aws_eip.qr_generator_eip.public_ip}"
+  value       = "ssh -i ~/.ssh/${var.key_pair_name}.pem ubuntu@${aws_eip.qr_generator_eip.public_ip}"
 }

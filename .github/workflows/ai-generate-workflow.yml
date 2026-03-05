@@ -99,12 +99,14 @@ jobs:
       - name: Generate suggestions and fixes
         run: |
           python ai_devops_agent.py --suggest-changes
+          python ai_devops_agent.py --apply-fixes
 
       - name: Check for suggested changes
         id: check_changes
         run: |
-          git add -N .
-          if git diff --quiet && [ ! -f suggestions.md ]; then
+          # Stage everything so both tracked modifications and new files are visible
+          git add -A
+          if git diff --cached --quiet; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
             echo "has_changes=true" >> $GITHUB_OUTPUT
@@ -119,7 +121,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add -A
+          # Files already staged by check_changes step
           git commit -m "AI: Pipeline analysis suggestions after PR #${{ github.event.pull_request.number }} merge"
           git push origin "$BRANCH"
 
@@ -162,7 +164,7 @@ jobs:
         env:
           OPENAI_API_TOKEN: ${{ secrets.OPENAI_API_TOKEN }}
         run: |
-          python generate_workflow.py --analyze-only --verbose
+          python ai_devops_agent.py --analyze-only --verbose
 
       - name: Generate suggestions
         run: |
