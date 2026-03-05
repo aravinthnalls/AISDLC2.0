@@ -1,0 +1,200 @@
+🤖 AI-Powered CI/CD Pipeline Generator
+==================================================
+🔧 Loaded config from pipeline_request.txt: instance_type=t2.micro, environment=production
+🤖 AI enhancement enabled with OpenAI integration
+🔍 Running analysis only...
+🔍 Analyzing project structure...
+🧠 AI analyzing project for intelligent recommendations...
+✅ AI analysis completed - enhanced recommendations available
+
+📊 Project Analysis Report
+==================================================
+
+🎨 Frontend Application:
+   📋 Framework: Node.js/JavaScript
+   🌐 Port: 8000
+   🛠️  Available scripts:
+      • test: Available
+      • build: Available
+      • lint: Available
+      • dev: Available
+
+🔧 Backend Application:
+   💻 Language: Python
+   🚀 Framework: FastAPI
+   🌐 Port: 8000
+   📦 Dependencies: 4 packages
+      • Key packages: fastapi, uvicorn, qrcode[pil]
+   🧪 Testing: pytest
+   🔍 Linting: flake8
+
+🏗️ Infrastructure:
+   ✅ Terraform configuration detected
+   📄 Configuration files: 3
+      • variables.tf
+      • main.tf
+      • outputs.tf
+
+🐳 Containerization:
+   ✅ Docker Compose configuration detected
+   📦 Dockerfiles found: 2
+      • Backend service
+      • Frontend service
+
+📚 Version Control:
+   Branch: main
+   Repository: https://github.com/aravinthnalls/AISDLC2.0
+
+🤖 AI-Powered Recommendations
+==================================================
+
+💡 AI Analysis:
+   ```json
+   {
+   "recommendations": {
+   "ci_cd_pipeline_stages": [
+   {
+   "stage": "install_dependencies",
+   "description": "Install all dependencies for frontend and backend.",
+   "commands": [
+   "cd frontend && npm install",
+   "cd backend && pip install -r requirements.txt"
+   ]
+   },
+   {
+   "stage": "lint_code",
+   "description": "Run linting for both frontend and backend to ensure code quality.",
+   "commands": [
+   "cd frontend && npm run lint",
+   "cd backend && flake8 ."
+   ]
+   },
+   {
+   "stage": "run_tests",
+   "description": "Execute tests for both frontend and backend.",
+   "commands": [
+   "cd frontend && npm test",
+   "cd backend && pytest"
+   ]
+   },
+   {
+   "stage": "build_artifacts",
+   "description": "Build frontend assets if applicable.",
+   "commands": [
+   "cd frontend && npm run build"
+   ]
+   },
+   {
+   "stage": "docker_build",
+   "description": "Build Docker images for the application.",
+   "commands": [
+   "docker build -t myapp:latest ."
+   ]
+   },
+   {
+   "stage": "deploy",
+   "description": "Deploy the application to the cloud or container orchestration platform.",
+   "commands": [
+   "docker-compose up -d"
+   ]
+   }
+   ],
+   "testing_strategies": {
+   "frontend": {
+   "unit_testing": "Implement unit tests using Jest or Mocha frameworks.",
+   "integration_testing": "Use Cypress for integration testing of UI components.",
+   "end_to_end_testing": "Utilize Playwright for end-to-end testing workflows."
+   },
+   "backend": {
+   "unit_testing": "Develop unit tests using pytest with coverage.",
+   "integration_testing": "Create integration tests for API endpoints.",
+   "load_testing": "Incorporate load testing using Locust or JMeter."
+   }
+   },
+   "deployment_recommendations": {
+   "container_orchestration": "Utilize Kubernetes or Docker Swarm for managing containerized applications.",
+   "cloud_provider": "Consider deploying on AWS EKS or GCP GKE for scalability and reliability.",
+   "environment_variables": "Use secrets management tools (e.g., AWS Secrets Manager, HashiCorp Vault) to manage sensitive configurations."
+   },
+   "security_considerations": {
+   "dependency_scanning": "Integrate tools like Snyk or Dependabot to monitor and update dependencies for vulnerabilities.",
+   "docker_security": "Implement Docker best practices, including using minimal base images and running containers as non-root users.",
+   "api_security": "Use OAuth or JWT for securing backend APIs and validate inputs to prevent common vulnerabilities."
+   },
+   "performance_optimization_suggestions": {
+   "frontend": {
+   "code_splitting": "Implement code splitting to reduce initial load time.",
+   "caching": "Use service workers for caching static assets.",
+   "cdn_usage": "Serve static assets through a CDN for faster content delivery."
+   },
+   "backend": {
+   "database_optimization": "Use indexing and query optimization techniques to improve database performance.",
+   "async_processing": "Leverage FastAPI's async capabilities for handling high I/O workloads.",
+   "caching": "Implement caching strategies (e.g., Redis) for frequently accessed data."
+   }
+   }
+   }
+   }
+   ```
+
+🔍 Raw Analysis Data (Verbose Mode):
+{
+  "frontend": {
+    "exists": true,
+    "path": "frontend",
+    "framework": "node",
+    "dependencies": {},
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 0",
+      "lint": "echo \"No linting configured\" && exit 0",
+      "build": "echo \"No build step needed for static files\" && exit 0",
+      "serve": "python -m http.server 3000",
+      "dev": "python -m http.server 3000"
+    },
+    "test_command": "npm test",
+    "build_command": "npm run build",
+    "lint_command": "npm run lint",
+    "install_command": "npm install",
+    "port": 8000
+  },
+  "backend": {
+    "exists": true,
+    "path": "backend",
+    "language": "python",
+    "framework": "fastapi",
+    "dependencies": [
+      "fastapi==0.104.1",
+      "uvicorn==0.24.0",
+      "qrcode[pil]==7.4.2",
+      "python-multipart==0.0.6"
+    ],
+    "test_command": "pytest",
+    "lint_command": "flake8",
+    "install_command": "pip install -r requirements.txt",
+    "port": 8000
+  },
+  "infrastructure": {
+    "terraform_exists": true,
+    "terraform_path": "terraform",
+    "terraform_files": [
+      "terraform/variables.tf",
+      "terraform/main.tf",
+      "terraform/outputs.tf"
+    ]
+  },
+  "docker": {
+    "compose_exists": true,
+    "dockerfiles": [
+      "backend/Dockerfile",
+      "frontend/Dockerfile"
+    ]
+  },
+  "git": {
+    "is_git_repo": true,
+    "current_branch": "main",
+    "remote_url": "https://github.com/aravinthnalls/AISDLC2.0"
+  },
+  "ai_recommendations": {
+    "recommendations": "```json\n{\n  \"recommendations\": {\n    \"ci_cd_pipeline_stages\": [\n      {\n        \"stage\": \"install_dependencies\",\n        \"description\": \"Install all dependencies for frontend and backend.\",\n        \"commands\": [\n          \"cd frontend && npm install\",\n          \"cd backend && pip install -r requirements.txt\"\n        ]\n      },\n      {\n        \"stage\": \"lint_code\",\n        \"description\": \"Run linting for both frontend and backend to ensure code quality.\",\n        \"commands\": [\n          \"cd frontend && npm run lint\",\n          \"cd backend && flake8 .\"\n        ]\n      },\n      {\n        \"stage\": \"run_tests\",\n        \"description\": \"Execute tests for both frontend and backend.\",\n        \"commands\": [\n          \"cd frontend && npm test\",\n          \"cd backend && pytest\"\n        ]\n      },\n      {\n        \"stage\": \"build_artifacts\",\n        \"description\": \"Build frontend assets if applicable.\",\n        \"commands\": [\n          \"cd frontend && npm run build\"\n        ]\n      },\n      {\n        \"stage\": \"docker_build\",\n        \"description\": \"Build Docker images for the application.\",\n        \"commands\": [\n          \"docker build -t myapp:latest .\"\n        ]\n      },\n      {\n        \"stage\": \"deploy\",\n        \"description\": \"Deploy the application to the cloud or container orchestration platform.\",\n        \"commands\": [\n          \"docker-compose up -d\"\n        ]\n      }\n    ],\n    \"testing_strategies\": {\n      \"frontend\": {\n        \"unit_testing\": \"Implement unit tests using Jest or Mocha frameworks.\",\n        \"integration_testing\": \"Use Cypress for integration testing of UI components.\",\n        \"end_to_end_testing\": \"Utilize Playwright for end-to-end testing workflows.\"\n      },\n      \"backend\": {\n        \"unit_testing\": \"Develop unit tests using pytest with coverage.\",\n        \"integration_testing\": \"Create integration tests for API endpoints.\",\n        \"load_testing\": \"Incorporate load testing using Locust or JMeter.\"\n      }\n    },\n    \"deployment_recommendations\": {\n      \"container_orchestration\": \"Utilize Kubernetes or Docker Swarm for managing containerized applications.\",\n      \"cloud_provider\": \"Consider deploying on AWS EKS or GCP GKE for scalability and reliability.\",\n      \"environment_variables\": \"Use secrets management tools (e.g., AWS Secrets Manager, HashiCorp Vault) to manage sensitive configurations.\"\n    },\n    \"security_considerations\": {\n      \"dependency_scanning\": \"Integrate tools like Snyk or Dependabot to monitor and update dependencies for vulnerabilities.\",\n      \"docker_security\": \"Implement Docker best practices, including using minimal base images and running containers as non-root users.\",\n      \"api_security\": \"Use OAuth or JWT for securing backend APIs and validate inputs to prevent common vulnerabilities.\"\n    },\n    \"performance_optimization_suggestions\": {\n      \"frontend\": {\n        \"code_splitting\": \"Implement code splitting to reduce initial load time.\",\n        \"caching\": \"Use service workers for caching static assets.\",\n        \"cdn_usage\": \"Serve static assets through a CDN for faster content delivery.\"\n      },\n      \"backend\": {\n        \"database_optimization\": \"Use indexing and query optimization techniques to improve database performance.\",\n        \"async_processing\": \"Leverage FastAPI's async capabilities for handling high I/O workloads.\",\n        \"caching\": \"Implement caching strategies (e.g., Redis) for frequently accessed data.\"\n      }\n    }\n  }\n}\n```"
+  }
+}
