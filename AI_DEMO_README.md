@@ -64,34 +64,61 @@ The agent scans the repo and outputs:
 
 Point: the agent reads code the same way a senior engineer would during an onboarding review.
 
-### Step 4 — Trigger the full loop via a PR merge
+### Step 4 — Open a PR and watch the AI analyze it
 
-Make a small code change (e.g., add a comment to `backend/main.py`), open a PR, and merge it into `main`.
+Make a small code change (e.g., add a comment to `backend/main.py`), commit, push, and open a PR to `main`.
+
+**Stage 1: AI Analysis on PR Open**
 
 GitHub Actions automatically triggers `ai-generate-workflow.yml`:
 
 ```
-PR merged into main
+PR opened
         ↓
-GitHub Actions: ai-generate-workflow.yml fires
+GitHub Actions: analyze-and-comment job fires
         ↓
-Agent runs --analyze-only  →  logs full analysis
+Agent analyzes the PR branch
         ↓
-Agent runs --suggest-changes  →  writes suggestions.md
+Agent runs --analyze-only  →  detects issues
         ↓
-If suggestions exist: new branch created, new PR opened automatically
+Agent runs --suggest-changes  →  generates suggestions.md
         ↓
-PR title: "AI Suggestions: Post-merge analysis of PR #N"
+Bot posts analysis as a PR comment with:
+  • High/Medium/Low priority issues
+  • Specific recommendations
+  • LLM insights (if OpenAI enabled)
 ```
 
-### Step 5 — Show the AI-generated PR
+Point: Developers see potential issues **before merging** — early feedback loop.
 
-Open the PR that the agent created. The PR body is the `suggestions.md` report:
-- Prioritized issues (High / Medium / Low)
-- Specific file-level fixes
-- If OpenAI is enabled: LLM-generated recommendations for the exact stack
+### Step 5 — Merge the PR and watch AI create a fix PR
+
+After reviewing the AI comment, merge the PR into `main`.
+
+**Stage 2: Automated Fix PR on Merge**
+
+```
+PR merged into main
+        ↓
+GitHub Actions: create-fix-pr job fires
+        ↓
+Agent re-analyzes the main branch
+        ↓
+If issues remain: creates new branch + PR with fixes
+        ↓
+PR title: "🤖 AI Suggestions: Post-merge fixes for PR #N"
+```
 
 Point: a human developer reviews and merges AI suggestions — the agent proposes, the human approves.
+
+### Step 6 — Show both PRs
+
+**Original PR**: Shows AI comment with analysis findings
+**AI-generated PR**: Contains actual code fixes and detailed explanation
+
+This demonstrates the two-stage approach:
+1. Early warning (comment on original PR)
+2. Automated remediation (new PR with fixes)
 
 ---
 
@@ -109,7 +136,7 @@ These run without any API key:
 
 ## What the Agent Can Recommend (AI-Enhanced)
 
-When `OPENAI_API_TOKEN` is set in GitHub Secrets, the agent calls GPT-3.5-turbo with the full project analysis as context and asks for:
+When `OPENAI_API_TOKEN` is set in GitHub Secrets, the agent calls GPT-4o-mini (OpenAI's most cost-effective model) with the full project analysis as context and asks for:
 
 1. Optimal CI/CD pipeline stages for this specific stack
 2. Testing strategies (what to test, how to structure it)
@@ -127,10 +154,12 @@ The LLM response is included verbatim in the `suggestions.md` PR body.
 |---------|------------------------------|
 | **Autonomous code analysis** | Agent reads and understands the repo without being told what's in it |
 | **Context-aware generation** | Terraform, Docker, and workflow files are generated based on what the agent found, not from a template |
-| **Event-driven AI action** | Agent fires on a real GitHub event (PR merge), not a manual trigger |
-| **Human-in-the-loop** | Agent opens a PR — a human still reviews and approves before anything merges |
+| **Event-driven AI action** | Agent fires on real GitHub events (PR open **and** PR merge), not manual triggers |
+| **Shift-left testing** | Issues detected and surfaced as PR comments **before** merge — early feedback prevents bugs |
+| **Multi-stage automation** | Stage 1: analyze & comment on PR; Stage 2: auto-generate fixes after merge |
+| **Human-in-the-loop** | Agent comments on PRs and opens fix PRs — humans review and approve all changes |
 | **Graceful degradation** | Works without OpenAI (rule-based), upgrades with it (LLM reasoning) |
-| **Structured output** | Agent produces `suggestions.md` — a machine-readable, human-readable artifact that becomes the PR body |
+| **Structured output** | Agent produces `suggestions.md` — a machine-readable, human-readable artifact used in comments and PRs |
 
 ---
 
@@ -138,9 +167,12 @@ The LLM response is included verbatim in the `suggestions.md` PR body.
 
 | Secret | Required | Purpose |
 |--------|----------|---------|
+| `PAT_TOKEN` | **Yes** | Personal Access Token for creating PRs and posting comments |
 | `AWS_ACCESS_KEY_ID` | For deployment | Terraform AWS access |
 | `AWS_SECRET_ACCESS_KEY` | For deployment | Terraform AWS access |
 | `OPENAI_API_TOKEN` | Optional | Enables LLM-enhanced suggestions |
+
+**Note**: `PAT_TOKEN` must be a GitHub Personal Access Token with `repo` and `workflow` scopes. The default `GITHUB_TOKEN` cannot create PRs.
 
 ---
 
@@ -150,9 +182,10 @@ The LLM response is included verbatim in the `suggestions.md` PR body.
 generate_workflow.py          ← the agent
 pipeline_request.txt          ← human intent input
 .github/workflows/
-  ai-generate-workflow.yml    ← triggers agent on PR merge
+  ai-generate-workflow.yml    ← triggers agent on PR open AND PR merge (two stages)
   ci-cd.yml                   ← generated by agent, runs tests + deploys
-suggestions.md                ← agent output, becomes PR body (auto-deleted after PR)
+suggestions.md                ← agent output, posted as PR comment + fix PR body
+analysis_output.txt           ← detailed analysis logs
 ```
 
 ---

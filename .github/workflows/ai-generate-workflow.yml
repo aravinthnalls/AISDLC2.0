@@ -2,14 +2,142 @@ name: AI Pipeline Analyzer
 
 on:
   pull_request:
-    types: [closed]
+    types: [opened, synchronize, reopened, closed]
     branches:
       - main
   workflow_dispatch:
 
 jobs:
-  analyze-and-suggest:
-    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+  # Stage 1: Analyze PR and post findings as comment (when PR is opened/updated)
+  analyze-and-comment:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pyyaml requests
+
+      - name: Run AI analyzer
+        env:
+          OPENAI_API_TOKEN: ${{ secrets.OPENAI_API_TOKEN }}
+        run: |
+          python generate_workflow.py --analyze-only --verbose > analysis_output.txt 2>&1 || true
+
+      - name: Generate suggestions report
+        run: |
+          python generate_workflow.py --suggest-changes || true
+
+      - name: Prepare comment body
+        id: prepare_comment
+        run: |
+          if [ -f suggestions.md ]; then
+            echo "## 🤖 AI Pipeline Analysis" > comment.md
+            echo "" >> comment.md
+            echo "**Analysis of PR #${{ github.event.pull_request.number }}**" >> comment.md
+            echo "" >> comment.md
+            cat suggestions.md >> comment.md
+            echo "" >> comment.md
+            echo "---" >> comment.md
+            echo "*This analysis was generated automatically. Review the suggestions and address high-priority items before merging.*" >> comment.md
+          else
+            echo "## ✅ AI Pipeline Analysis" > comment.md
+            echo "" >> comment.md
+            echo "No issues detected in this PR. All checks passed!" >> comment.md
+          fi
+
+      - name: Post analysis comment on PR
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body-file comment.md
+
+  # Stage 2: Create fix PR with automated changes (when PR is merged)
+  create-fix-pr:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pyyaml requests
+
+      - name: Run AI analyzer on merged code
+        env:
+          OPENAI_API_TOKEN: ${{ secrets.OPENAI_API_TOKEN }}
+        run: |
+          python generate_workflow.py --analyze-only --verbose > analysis_output.txt 2>&1 || true
+          cat analysis_output.txt
+
+      - name: Generate suggestions and fixes
+        run: |
+          python generate_workflow.py --suggest-changes
+
+      - name: Check for suggested changes
+        id: check_changes
+        run: |
+          git add -N .
+          if git diff --quiet && [ ! -f suggestions.md ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create suggestion branch and PR
+        if: steps.check_changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          BRANCH="ai-suggestions-$(date +%Y%m%d-%H%M%S)"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "AI: Pipeline analysis suggestions after PR #${{ github.event.pull_request.number }} merge"
+          git push origin "$BRANCH"
+
+          PR_BODY=$(cat suggestions.md 2>/dev/null || echo "AI analysis completed. See workflow logs for details.")
+
+          gh pr create \
+            --title "🤖 AI Suggestions: Post-merge fixes for PR #${{ github.event.pull_request.number }}" \
+            --body "$PR_BODY" \
+            --base main \
+            --head "$BRANCH"
+
+      - name: No changes needed
+        if: steps.check_changes.outputs.has_changes == 'false'
+        run: echo "✅ AI analysis complete — no fixes needed after merge."
+
+  # Manual trigger support
+  manual-analysis:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -34,43 +162,17 @@ jobs:
         env:
           OPENAI_API_TOKEN: ${{ secrets.OPENAI_API_TOKEN }}
         run: |
-          python generate_workflow.py --analyze-only --verbose > analysis_output.txt 2>&1 || true
-          cat analysis_output.txt
+          python generate_workflow.py --analyze-only --verbose
 
-      - name: Generate suggestions report
+      - name: Generate suggestions
         run: |
           python generate_workflow.py --suggest-changes
 
-      - name: Check for suggested changes
-        id: check_changes
+      - name: Display results
         run: |
-          if git diff --quiet && [ ! -f suggestions.md ]; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+          if [ -f suggestions.md ]; then
+            echo "📋 Analysis suggestions:"
+            cat suggestions.md
           else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "✅ No suggestions needed."
           fi
-
-      - name: Create suggestion branch and PR
-        if: steps.check_changes.outputs.has_changes == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
-        run: |
-          BRANCH="ai-suggestions-$(date +%Y%m%d-%H%M%S)"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
-          git add -A
-          git commit -m "AI: Pipeline analysis suggestions after PR #${{ github.event.pull_request.number }} merge"
-          git push origin "$BRANCH"
-
-          PR_BODY=$(cat suggestions.md 2>/dev/null || echo "AI analysis completed. See workflow logs for details.")
-
-          gh pr create \
-            --title "AI Suggestions: Post-merge analysis of PR #${{ github.event.pull_request.number }}" \
-            --body "$PR_BODY" \
-            --base main \
-            --head "$BRANCH"
-
-      - name: No changes needed
-        if: steps.check_changes.outputs.has_changes == 'false'
-        run: echo "✅ AI analysis complete — no changes suggested."
