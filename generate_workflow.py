@@ -341,7 +341,7 @@ Respond in JSON format with specific, actionable recommendations.
             }
             
             data = {
-                "model": "gpt-3.5-turbo",
+                "model": "gpt-4o-mini",
                 "messages": [
                     {
                         "role": "system",
