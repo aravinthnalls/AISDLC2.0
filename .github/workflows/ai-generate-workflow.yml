@@ -69,8 +69,7 @@ jobs:
             --title "AI Suggestions: Post-merge analysis of PR #${{ github.event.pull_request.number }}" \
             --body "$PR_BODY" \
             --base main \
-            --head "$BRANCH" \
-            --label "ai-generated"
+            --head "$BRANCH"
 
       - name: No changes needed
         if: steps.check_changes.outputs.has_changes == 'false'
