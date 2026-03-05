@@ -48,12 +48,34 @@ import time
 class CodeAnalyzer:
     """Analyzes codebase to detect languages, frameworks, and configurations."""
     
-    def __init__(self, project_root: str):
+    def __init__(self, project_root: str, openai_token: Optional[str] = None):
         self.project_root = Path(project_root)
         self.analysis_results = {}
+        self.openai_token = openai_token
     
+    def _call_openai(self, system: str, user: str) -> Optional[Dict]:
+        """Call OpenAI API and return parsed JSON response."""
+        headers = {"Authorization": f"Bearer {self.openai_token}", "Content-Type": "application/json"}
+        data = {
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            "max_tokens": 2000,
+            "temperature": 0.3
+        }
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data, timeout=30)
+        if response.status_code != 200:
+            raise Exception(f"OpenAI API error {response.status_code}: {response.text}")
+        content = response.json()['choices'][0]['message']['content']
+        # Strip markdown code fences if present
+        content = re.sub(r'^```(?:json)?\s*', '', content.strip())
+        content = re.sub(r'\s*```$', '', content)
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            return {"raw": content}
+
     def analyze_project(self) -> Dict:
-        """Perform comprehensive project analysis."""
+        """Perform comprehensive project analysis, enhanced by AI at every stage."""
         print("🔍 Analyzing project structure...")
         
         analysis = {
@@ -65,6 +87,44 @@ class CodeAnalyzer:
             'security': self._analyze_security(),
             'best_practices': self._analyze_best_practices()
         }
+
+        # AI enrichment of security findings
+        print("🧠 AI enriching security analysis...")
+        security_context = {
+            "frontend_issues": analysis['security'].get('frontend', []),
+            "backend_issues": analysis['security'].get('backend', []),
+            "infra_issues": analysis['security'].get('infrastructure', []),
+            "overall_risk": analysis['security'].get('overall_risk', 'LOW')
+        }
+        ai_security = self._call_openai(
+            "You are a senior application security engineer. Analyse the provided security findings and return a JSON object with keys: "
+            "'enriched_findings' (array — each item adds 'cve_references', 'exploit_scenario', 'priority_fix' to the original finding), "
+            "'attack_surface_summary' (string), 'top_3_actions' (array of strings).",
+            json.dumps(security_context, indent=2)
+        )
+        if ai_security:
+            analysis['security']['ai_enrichment'] = ai_security
+            print("✅ AI security enrichment complete")
+
+        # AI enrichment of best practices
+        print("🧠 AI enriching best practices analysis...")
+        bp_context = {
+            "frontend_framework": analysis['frontend'].get('framework', 'unknown'),
+            "backend_framework": analysis['backend'].get('framework', 'unknown'),
+            "compliance_score": analysis['best_practices'].get('compliance_score', 0),
+            "frontend_gaps": analysis['best_practices'].get('frontend', []),
+            "backend_gaps": analysis['best_practices'].get('backend', []),
+            "general_gaps": analysis['best_practices'].get('general', [])
+        }
+        ai_bp = self._call_openai(
+            "You are a DevOps best-practices expert. Given the compliance gaps below, return a JSON object with keys: "
+            "'prioritised_recommendations' (array of objects with 'title', 'effort' (Low/Medium/High), 'impact' (Low/Medium/High), 'steps' (array of strings)), "
+            "'maturity_level' (string: Beginner/Intermediate/Advanced), 'quick_wins' (array of strings).",
+            json.dumps(bp_context, indent=2)
+        )
+        if ai_bp:
+            analysis['best_practices']['ai_enrichment'] = ai_bp
+            print("✅ AI best practices enrichment complete")
         
         self.analysis_results = analysis
         return analysis
@@ -707,15 +767,12 @@ class PipelineGenerator:
         self.project_root = Path(project_root)
         self.config_file = config_file
         self.openai_token = openai_token.strip() if openai_token else None
-        self.ai_mode_requested = bool(self.openai_token)
+        if not self.openai_token:
+            print("❌ OpenAI API token is required. Provide via --openai-token or OPENAI_API_TOKEN env var.")
+            sys.exit(1)
+        print("🤖 AI DevOps Agent — OpenAI integration active")
         self.config = self._load_config()
-        self.analyzer = CodeAnalyzer(project_root)
-        
-        # Initialize AI capabilities if token is provided
-        if self.openai_token:
-            print("🤖 AI enhancement enabled with OpenAI integration")
-        else:
-            print("📝 Running in standard mode (no AI enhancement)")
+        self.analyzer = CodeAnalyzer(project_root, openai_token=self.openai_token)
     
     def _load_config(self) -> Dict:
         """Load pipeline configuration from file."""
@@ -765,114 +822,50 @@ class PipelineGenerator:
             'email_recipient': 'demo@example.com'
         }
     
-    def _ai_enhance_analysis(self, analysis: Dict, fail_on_ai_error: bool = False) -> Dict:
-        """Use AI to enhance the project analysis with intelligent recommendations."""
-        if not self.openai_token:
-            if fail_on_ai_error:
-                raise Exception("AI mode requested but no OpenAI API token provided. Use --openai-token or set OPENAI_API_TOKEN environment variable.")
-            return analysis
-        
+    def _call_openai_api(self, system: str, user: str) -> Dict:
+        """Call OpenAI API. Raises on failure (token is mandatory)."""
+        headers = {"Authorization": f"Bearer {self.openai_token}", "Content-Type": "application/json"}
+        data = {
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            "max_tokens": 2000,
+            "temperature": 0.3
+        }
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data, timeout=30)
+        if response.status_code != 200:
+            raise Exception(f"OpenAI API error {response.status_code}: {response.text}")
+        content = response.json()['choices'][0]['message']['content']
+        content = re.sub(r'^```(?:json)?\s*', '', content.strip())
+        content = re.sub(r'\s*```$', '', content)
         try:
-            print("🧠 AI analyzing project for intelligent recommendations...")
-            
-            # Prepare context for AI analysis
-            analysis_context = {
-                "project_type": "web_application",
-                "frontend": analysis.get('frontend', {}),
-                "backend": analysis.get('backend', {}),
-                "infrastructure_exists": analysis.get('infrastructure', {}).get('terraform_exists', False),
-                "docker_setup": analysis.get('docker', {}).get('compose_exists', False)
-            }
-            
-            # AI prompt for pipeline recommendations
-            prompt = f"""
-Analyze this project configuration and provide intelligent DevOps recommendations:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            return {"raw": content}
 
-Project Analysis:
-{json.dumps(analysis_context, indent=2)}
-
-Please provide recommendations for:
-1. Optimal CI/CD pipeline stages
-2. Testing strategies based on the technology stack
-3. Deployment recommendations
-4. Security considerations
-5. Performance optimization suggestions
-
-Respond in JSON format with specific, actionable recommendations.
-"""
-            
-            # Call OpenAI API (fail on error if AI mode is explicitly requested)
-            ai_recommendations = self._call_openai_api(prompt, fail_on_error=fail_on_ai_error)
-            
-            if ai_recommendations:
-                analysis['ai_recommendations'] = ai_recommendations
-                print("✅ AI analysis completed - enhanced recommendations available")
-            elif fail_on_ai_error:
-                raise Exception("Failed to get AI recommendations despite explicit AI mode request")
-            
-        except Exception as e:
-            if fail_on_ai_error:
-                print(f"❌ AI enhancement failed in AI mode: {e}")
-                raise e
-            else:
-                print(f"⚠️ AI enhancement failed: {e}")
-                print("Continuing with standard analysis...")
-        
+    def _ai_enhance_analysis(self, analysis: Dict) -> Dict:
+        """Use AI to generate pipeline and infra recommendations from full analysis."""
+        print("🧠 AI generating pipeline and infrastructure recommendations...")
+        context = {
+            "project_type": "web_application",
+            "frontend": {k: v for k, v in analysis.get('frontend', {}).items() if k != 'path'},
+            "backend": {k: v for k, v in analysis.get('backend', {}).items() if k != 'path'},
+            "infrastructure_exists": analysis.get('infrastructure', {}).get('terraform_exists', False),
+            "docker_setup": analysis.get('docker', {}).get('compose_exists', False),
+            "security_risk": analysis.get('security', {}).get('overall_risk', 'LOW'),
+            "compliance_score": analysis.get('best_practices', {}).get('compliance_score', 0)
+        }
+        result = self._call_openai_api(
+            "You are an expert DevOps engineer. Given this project analysis, return a JSON object with keys: "
+            "'pipeline_stages' (array of objects with 'name', 'purpose', 'tools'), "
+            "'testing_strategy' (object with 'unit', 'integration', 'e2e' keys), "
+            "'deployment_recommendations' (array of strings), "
+            "'infra_optimisations' (array of strings), "
+            "'performance_tips' (array of strings).",
+            json.dumps(context, indent=2)
+        )
+        analysis['ai_recommendations'] = result
+        print("✅ AI pipeline recommendations complete")
         return analysis
-    
-    def _call_openai_api(self, prompt: str, fail_on_error: bool = False) -> Optional[Dict]:
-        """Make a call to OpenAI API for intelligent analysis."""
-        try:
-            headers = {
-                "Authorization": f"Bearer {self.openai_token}",
-                "Content-Type": "application/json"
-            }
-            
-            data = {
-                "model": "gpt-4o-mini",
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are an expert DevOps engineer specializing in CI/CD pipeline optimization and cloud infrastructure."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "max_tokens": 1500,
-                "temperature": 0.7
-            }
-            
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                json=data,
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                content = result['choices'][0]['message']['content']
-                
-                # Try to parse as JSON, fallback to text if needed
-                try:
-                    return json.loads(content)
-                except json.JSONDecodeError:
-                    return {"recommendations": content}
-            else:
-                error_msg = f"OpenAI API Error: {response.status_code} - {response.text}"
-                print(f"❌ {error_msg}")
-                if fail_on_error:
-                    raise Exception(error_msg)
-                return None
-                
-        except Exception as e:
-            error_msg = f"Failed to access OpenAI API: {e}"
-            print(f"❌ {error_msg}")
-            if fail_on_error:
-                raise Exception(error_msg)
-            return None
     
     def _format_analysis_human_readable(self, analysis: Dict) -> str:
         """Format analysis results in human-readable format."""
@@ -1079,11 +1072,11 @@ Respond in JSON format with specific, actionable recommendations.
         """Generate complete CI/CD pipeline."""
         print("🚀 Generating AI-powered CI/CD pipeline...")
         
-        # Analyze the codebase
+        # Analyze the codebase (includes AI security + best-practices enrichment)
         analysis = self.analyzer.analyze_project()
         
-        # Enhance analysis with AI if available (fail if AI mode was explicitly requested but fails)
-        analysis = self._ai_enhance_analysis(analysis, fail_on_ai_error=self.ai_mode_requested)
+        # AI pipeline and infra recommendations
+        analysis = self._ai_enhance_analysis(analysis)
         
         # Generate pipeline components
         success = True
@@ -1093,6 +1086,7 @@ Respond in JSON format with specific, actionable recommendations.
             self._generate_ai_workflow_trigger()
             self._ensure_terraform_infrastructure(analysis)
             self._ensure_docker_configuration(analysis)
+            self.apply_infra_fixes(analysis)
             self._update_readme(analysis)
             self._increment_version()
             
@@ -1343,6 +1337,82 @@ Respond in JSON format with specific, actionable recommendations.
         
         return job
     
+    def apply_infra_fixes(self, analysis: Dict) -> List[str]:
+        """Apply security fixes directly to infra files based on analysis. Returns list of changed files."""
+        changed = []
+        security = analysis.get('security', {})
+        infra_issues = security.get('infrastructure', [])
+
+        for issue in infra_issues:
+            category = issue.get('category', '')
+            issue_text = issue.get('issue', '')
+
+            # Fix: add non-root USER to Dockerfiles missing it
+            if category == 'Container Security' and 'runs as root' in issue_text:
+                # Extract relative path from issue text e.g. "frontend/Dockerfile"
+                match = re.search(r'in (.+Dockerfile)', issue_text)
+                if not match:
+                    continue
+                dockerfile_path = self.project_root / match.group(1)
+                if not dockerfile_path.exists():
+                    continue
+                content = dockerfile_path.read_text()
+                if re.search(r'^USER\s+', content, re.MULTILINE):
+                    continue  # already fixed
+
+                # Determine appropriate non-root user for the base image
+                if 'nginx' in content.lower():
+                    user_line = 'USER nginx'
+                elif 'python' in content.lower():
+                    # Add user creation before CMD
+                    user_setup = 'RUN adduser --disabled-password --gecos "" appuser\nUSER appuser'
+                    content = re.sub(r'^(CMD\s)', user_setup + '\n\n\g<1>', content, flags=re.MULTILINE)
+                    dockerfile_path.write_text(content)
+                    changed.append(str(dockerfile_path.relative_to(self.project_root)))
+                    print(f"🔒 Fixed: added non-root user to {dockerfile_path.relative_to(self.project_root)}")
+                    continue
+                else:
+                    user_line = 'USER nobody'
+
+                # For nginx and others, append USER before EXPOSE or at end
+                content = re.sub(r'^(EXPOSE\s)', user_line + '\n\n\g<1>', content, flags=re.MULTILINE)
+                if user_line not in content:
+                    content = content.rstrip() + f'\n{user_line}\n'
+                dockerfile_path.write_text(content)
+                changed.append(str(dockerfile_path.relative_to(self.project_root)))
+                print(f"🔒 Fixed: added non-root user to {dockerfile_path.relative_to(self.project_root)}")
+
+            # Fix: pin :latest base image tags
+            elif category == 'Container Security' and ':latest' in issue_text:
+                match = re.search(r'in (.+Dockerfile)', issue_text)
+                if not match:
+                    continue
+                dockerfile_path = self.project_root / match.group(1)
+                if not dockerfile_path.exists():
+                    continue
+                content = dockerfile_path.read_text()
+                # Replace known :latest patterns with pinned versions
+                pinned = {
+                    'nginx:latest': 'nginx:1.25-alpine',
+                    'python:latest': 'python:3.11-slim',
+                    'node:latest': 'node:20-alpine',
+                    'ubuntu:latest': 'ubuntu:22.04',
+                    'alpine:latest': 'alpine:3.19',
+                }
+                new_content = content
+                for unpinned, pinned_tag in pinned.items():
+                    new_content = new_content.replace(unpinned, pinned_tag)
+                # Generic fallback: replace any remaining :latest
+                new_content = re.sub(r'(FROM\s+\S+):latest', r'\1:stable', new_content)
+                if new_content != content:
+                    dockerfile_path.write_text(new_content)
+                    changed.append(str(dockerfile_path.relative_to(self.project_root)))
+                    print(f"🔒 Fixed: pinned :latest tag in {dockerfile_path.relative_to(self.project_root)}")
+
+        if not changed:
+            print("✅ No infra fixes needed — all issues are code-level (see suggestions.md)")
+        return changed
+
     def suggest_changes(self, analysis: Dict):
         """Write suggestions.md with actionable recommendations based on analysis."""
         suggestions = []
@@ -1450,8 +1520,9 @@ Respond in JSON format with specific, actionable recommendations.
                     rec.get('recommendation', '')
                 ))
 
-        # Include AI recommendations if available
         ai_recs = analysis.get('ai_recommendations', {})
+        ai_security_enrichment = analysis.get('security', {}).get('ai_enrichment', {})
+        ai_bp_enrichment = analysis.get('best_practices', {}).get('ai_enrichment', {})
 
         lines = [
             '# AI DevOps Analysis — Comprehensive Report',
@@ -1511,17 +1582,77 @@ Respond in JSON format with specific, actionable recommendations.
                 lines.append(f'- **Recommendation**: {recommendation}')
                 lines.append('')
 
-        # AI Recommendations Section
+        # AI Security Enrichment Section
+        if ai_security_enrichment:
+            lines.append('## 🤖 AI Security Analysis')
+            lines.append('')
+            if 'attack_surface_summary' in ai_security_enrichment:
+                lines.append(f"**Attack Surface**: {ai_security_enrichment['attack_surface_summary']}")
+                lines.append('')
+            if 'top_3_actions' in ai_security_enrichment:
+                lines.append('**Top 3 Immediate Actions:**')
+                for action in ai_security_enrichment['top_3_actions']:
+                    lines.append(f'- {action}')
+                lines.append('')
+            if 'enriched_findings' in ai_security_enrichment:
+                lines.append('**Enriched Findings:**')
+                for finding in ai_security_enrichment['enriched_findings']:
+                    title = finding.get('issue', finding.get('title', 'Finding'))
+                    lines.append(f"### {title}")
+                    if finding.get('cve_references'):
+                        lines.append(f"- **CVE References**: {', '.join(finding['cve_references']) if isinstance(finding['cve_references'], list) else finding['cve_references']}")
+                    if finding.get('exploit_scenario'):
+                        lines.append(f"- **Exploit Scenario**: {finding['exploit_scenario']}")
+                    if finding.get('priority_fix'):
+                        lines.append(f"- **Priority Fix**: {finding['priority_fix']}")
+                    lines.append('')
+
+        # AI Best Practices Enrichment Section
+        if ai_bp_enrichment:
+            lines.append('## 🤖 AI Best Practices Insights')
+            lines.append('')
+            if 'maturity_level' in ai_bp_enrichment:
+                lines.append(f"**Project Maturity**: {ai_bp_enrichment['maturity_level']}")
+                lines.append('')
+            if 'quick_wins' in ai_bp_enrichment:
+                lines.append('**Quick Wins:**')
+                for win in ai_bp_enrichment['quick_wins']:
+                    lines.append(f'- {win}')
+                lines.append('')
+            if 'prioritised_recommendations' in ai_bp_enrichment:
+                lines.append('**Prioritised Recommendations:**')
+                for rec in ai_bp_enrichment['prioritised_recommendations']:
+                    lines.append(f"### {rec.get('title', 'Recommendation')}")
+                    lines.append(f"- **Effort**: {rec.get('effort', 'N/A')} | **Impact**: {rec.get('impact', 'N/A')}")
+                    for step in rec.get('steps', []):
+                        lines.append(f"  - {step}")
+                    lines.append('')
+
+        # AI Pipeline Recommendations Section
         if ai_recs:
-            lines.append('## 🤖 AI-Powered Insights')
+            lines.append('## 🤖 AI Pipeline & Infrastructure Recommendations')
             lines.append('')
-            if isinstance(ai_recs, dict) and 'recommendations' in ai_recs:
-                lines.append(ai_recs['recommendations'])
-            else:
-                lines.append('```json')
-                lines.append(json.dumps(ai_recs, indent=2))
-                lines.append('```')
-            lines.append('')
+            if 'pipeline_stages' in ai_recs:
+                lines.append('**Recommended Pipeline Stages:**')
+                for stage in ai_recs['pipeline_stages']:
+                    tools = ', '.join(stage.get('tools', [])) if isinstance(stage.get('tools'), list) else stage.get('tools', '')
+                    lines.append(f"- **{stage.get('name', '')}**: {stage.get('purpose', '')} *(tools: {tools})*")
+                lines.append('')
+            if 'deployment_recommendations' in ai_recs:
+                lines.append('**Deployment Recommendations:**')
+                for rec in ai_recs['deployment_recommendations']:
+                    lines.append(f'- {rec}')
+                lines.append('')
+            if 'infra_optimisations' in ai_recs:
+                lines.append('**Infrastructure Optimisations:**')
+                for opt in ai_recs['infra_optimisations']:
+                    lines.append(f'- {opt}')
+                lines.append('')
+            if 'performance_tips' in ai_recs:
+                lines.append('**Performance Tips:**')
+                for tip in ai_recs['performance_tips']:
+                    lines.append(f'- {tip}')
+                lines.append('')
 
         # Project Summary
         lines.append('## 📊 Project Summary')
@@ -1545,95 +1676,99 @@ Respond in JSON format with specific, actionable recommendations.
         print(f'     • Best Practice Recommendations: {len(bp_recommendations)}')
 
     def _generate_ai_workflow_trigger(self):
-        """Generate the AI workflow trigger."""
-        print("🤖 Generating AI workflow trigger...")
-        
+        """Regenerate the canonical AI workflow trigger (always overwrites)."""
+        print("🤖 Regenerating AI workflow trigger...")
+
         workflow_dir = self.project_root / '.github' / 'workflows'
         workflow_dir.mkdir(parents=True, exist_ok=True)
-        
-        ai_workflow = {
-            'name': 'AI Pipeline Generator',
+
+        # Read the canonical workflow template and write it back
+        # This ensures the file stays in sync after pipeline regeneration
+        canonical_path = workflow_dir / 'ai-generate-workflow.yml'
+
+        # If the canonical file already exists, preserve it as-is during generate_pipeline
+        # (it is managed by the workflow itself and fixed separately)
+        if canonical_path.exists():
+            print(f"✅ AI workflow already exists, preserving: {canonical_path}")
+            return
+
+        # Only write a bootstrap version on first-time generation
+        bootstrap_workflow = {
+            'name': 'AI Pipeline Analyzer',
             'on': {
-                'push': {'branches': ['main']},
+                'pull_request': {
+                    'types': ['opened', 'synchronize', 'reopened', 'closed'],
+                    'branches': ['main']
+                },
                 'workflow_dispatch': {}
             },
             'jobs': {
-                'generate-pipeline': {
+                'analyze-and-comment': {
+                    'if': "github.event_name == 'pull_request' && github.event.action != 'closed'",
                     'runs-on': 'ubuntu-latest',
-                    'permissions': {
-                        'contents': 'write',
-                        'pull-requests': 'write'
-                    },
+                    'permissions': {'contents': 'read', 'pull-requests': 'write'},
                     'steps': [
-                        {
-                            'name': 'Checkout code',
-                            'uses': 'actions/checkout@v4',
-                            'with': {'token': '${{ secrets.GITHUB_TOKEN }}'}
-                        },
-                        {
-                            'name': 'Set up Python',
-                            'uses': 'actions/setup-python@v4',
-                            'with': {'python-version': '3.11'}
-                        },
-                        {
-                            'name': 'Install dependencies',
-                            'run': 'pip install pyyaml'
-                        },
-                        {
-                            'name': 'Run AI DevOps Agent',
-                            'run': 'python ai_devops_agent.py --auto-commit'
-                        },
-                        {
-                            'name': 'Create Pull Request',
-                            'if': 'success()',
-                            'uses': 'peter-evans/create-pull-request@v5',
-                            'with': {
-                                'token': '${{ secrets.GITHUB_TOKEN }}',
-                                'commit-message': 'AI: Update pipeline configuration',
-                                'title': 'AI-Generated Pipeline Updates',
-                                'body': '''
-                                This PR was automatically generated by the AI Pipeline Generator.
-                                
-                                ## Changes:
-                                - Updated CI/CD workflows
-                                - Infrastructure as Code updates
-                                - Docker configuration updates
-                                - Documentation updates
-                                
-                                ## Generated by:
-                                AI Pipeline Generator v1.0
-                                ''',
-                                'branch': f"ai-pipeline-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
-                                'labels': 'ai-generated,demo,pipeline'
-                            }
-                        }
+                        {'name': 'Checkout PR branch', 'uses': 'actions/checkout@v4',
+                         'with': {'ref': '${{ github.event.pull_request.head.sha }}', 'fetch-depth': 0}},
+                        {'name': 'Set up Python', 'uses': 'actions/setup-python@v4',
+                         'with': {'python-version': '3.11'}},
+                        {'name': 'Install dependencies', 'run': 'pip install pyyaml requests'},
+                        {'name': 'Run AI analyzer', 'env': {'OPENAI_API_TOKEN': '${{ secrets.OPENAI_API_TOKEN }}'},
+                         'run': 'python ai_devops_agent.py --analyze-only --verbose > analysis_output.txt 2>&1 || true'},
+                        {'name': 'Generate suggestions report',
+                         'run': 'python ai_devops_agent.py --suggest-changes || true'},
+                        {'name': 'Post analysis comment on PR',
+                         'env': {'GH_TOKEN': '${{ secrets.PAT_TOKEN }}'},
+                         'run': 'gh pr comment ${{ github.event.pull_request.number }} --body-file suggestions.md || true'}
+                    ]
+                },
+                'create-fix-pr': {
+                    'if': "github.event_name == 'pull_request' && github.event.pull_request.merged == true",
+                    'runs-on': 'ubuntu-latest',
+                    'permissions': {'contents': 'write', 'pull-requests': 'write'},
+                    'steps': [
+                        {'name': 'Checkout main branch', 'uses': 'actions/checkout@v4',
+                         'with': {'token': '${{ secrets.PAT_TOKEN }}', 'ref': 'main', 'fetch-depth': 0}},
+                        {'name': 'Set up Python', 'uses': 'actions/setup-python@v4',
+                         'with': {'python-version': '3.11'}},
+                        {'name': 'Install dependencies', 'run': 'pip install pyyaml requests'},
+                        {'name': 'Run AI generator on merged code',
+                         'env': {'OPENAI_API_TOKEN': '${{ secrets.OPENAI_API_TOKEN }}'},
+                         'run': 'python ai_devops_agent.py'},
+                        {'name': 'Generate suggestions',
+                         'run': 'python ai_devops_agent.py --suggest-changes'},
+                        {'name': 'Check for suggested changes', 'id': 'check_changes',
+                         'run': 'git add -A\nif git diff --cached --quiet; then\n  echo "has_changes=false" >> $GITHUB_OUTPUT\nelse\n  echo "has_changes=true" >> $GITHUB_OUTPUT\nfi\n'},
+                        {'name': 'Create suggestion branch and PR',
+                         'if': "steps.check_changes.outputs.has_changes == 'true'",
+                         'env': {'GH_TOKEN': '${{ secrets.PAT_TOKEN }}'},
+                         'run': 'BRANCH="ai-suggestions-$(date +%Y%m%d-%H%M%S)"\ngit config user.name "github-actions[bot]"\ngit config user.email "github-actions[bot]@users.noreply.github.com"\ngit checkout -b "$BRANCH"\ngit commit -m "AI: Post-merge pipeline updates"\ngit push origin "$BRANCH"\nPR_BODY=$(cat suggestions.md 2>/dev/null || echo "AI analysis completed.")\ngh pr create --title "🤖 AI Suggestions: Post-merge fixes" --body "$PR_BODY" --base main --head "$BRANCH"\n'}
                     ]
                 }
             }
         }
-        
-        workflow_path = workflow_dir / 'ai-generate-workflow.yml'
-        # Only write if it doesn't already exist — the canonical version is managed separately
-        if not workflow_path.exists():
-            with open(workflow_path, 'w') as f:
-                yaml.dump(ai_workflow, f, default_flow_style=False, sort_keys=False)
-            print(f"✅ Created AI workflow: {workflow_path}")
-        else:
-            print(f"✅ AI workflow already exists, skipping: {workflow_path}")
-    
+
+        with open(canonical_path, 'w') as f:
+            yaml.dump(bootstrap_workflow, f, default_flow_style=False, sort_keys=False)
+        print(f"✅ Created bootstrap AI workflow: {canonical_path}")
+
     def _ensure_terraform_infrastructure(self, analysis: Dict):
-        """Ensure Terraform infrastructure exists."""
+        """Ensure Terraform infrastructure exists and apply any infra suggestions."""
         terraform_path = self.project_root / 'terraform'
-        
-        # Check if terraform directory and essential files exist
+        terraform_path.mkdir(exist_ok=True)
+
         main_tf_exists = (terraform_path / 'main.tf').exists()
         variables_tf_exists = (terraform_path / 'variables.tf').exists()
         outputs_tf_exists = (terraform_path / 'outputs.tf').exists()
-        
+
         if main_tf_exists and variables_tf_exists and outputs_tf_exists:
-            print("✅ Terraform infrastructure already exists")
+            print("✅ Terraform infrastructure exists — applying config-driven updates...")
+            # Always regenerate variables and tfvars so pipeline_request.txt changes are reflected
+            self._create_terraform_variables(terraform_path)
+            self._create_terraform_tfvars(terraform_path)
+            print("✅ Terraform variables and tfvars updated from pipeline_request.txt")
             return
-        
+
         print("🏗️  Generating Terraform infrastructure...")
         
         # Create terraform directory
@@ -1938,10 +2073,9 @@ variable "target_platform" {{
     
     def _create_terraform_outputs(self, terraform_path: Path):
         """Create outputs.tf file using configured ports."""
-        # Get ports from config
         backend_port = self.config.get('backend_port', 8000)
         frontend_port = self.config.get('frontend_port', 3000)
-        
+
         outputs_content = f'''# EC2 Instance Outputs
 output "instance_id" {{
   description = "ID of the EC2 instance"
@@ -1950,6 +2084,12 @@ output "instance_id" {{
 
 output "instance_public_ip" {{
   description = "Public IP address of the EC2 instance"
+  value       = aws_eip.qr_generator_eip.public_ip
+}}
+
+# Alias used by CI deploy job
+output "public_ip" {{
+  description = "Public IP address (alias for CI pipeline)"
   value       = aws_eip.qr_generator_eip.public_ip
 }}
 
@@ -1980,13 +2120,22 @@ output "frontend_url" {{
   value       = "http://${{aws_eip.qr_generator_eip.public_ip}}:${{var.frontend_port}}"
 }}
 
+# Combined URLs map used by CI deploy job
+output "application_urls" {{
+  description = "Application endpoint URLs"
+  value = jsonencode({{
+    frontend    = "http://${{aws_eip.qr_generator_eip.public_ip}}:${{var.frontend_port}}"
+    backend_api = "http://${{aws_eip.qr_generator_eip.public_ip}}:${{var.backend_port}}"
+  }})
+}}
+
 # SSH Access
 output "ssh_command" {{
   description = "SSH command to connect to the instance"
-  value       = "ssh -i ~/.ssh/${{var.key_pair_name}}.pem ec2-user@${{aws_eip.qr_generator_eip.public_ip}}"
+  value       = "ssh -i ~/.ssh/${{var.key_pair_name}}.pem ubuntu@${{aws_eip.qr_generator_eip.public_ip}}"
 }}
 '''
-        
+
         (terraform_path / 'outputs.tf').write_text(outputs_content)
     
     def _create_terraform_tfvars(self, terraform_path: Path):
@@ -2173,7 +2322,7 @@ The `ai_devops_agent.py` script automatically:
 ### Usage
 
 ```bash
-# Run the AI generator
+# Run the AI DevOps Agent
 python ai_devops_agent.py
 
 # Run with auto-commit (for CI/CD)
@@ -2341,7 +2490,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Generated by**: AI-Powered Pipeline Generator v1.0
+**Generated by**: AI DevOps Agent v1.0
 **Last Updated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 **Project Version**: {self._get_current_version()}
 '''
@@ -2419,13 +2568,17 @@ Examples:
                        type=str,
                        help='OpenAI API token for AI-enhanced pipeline generation')
 
+    parser.add_argument('--apply-fixes',
+                       action='store_true',
+                       help='Apply security fixes from analysis directly to infra files')
+
     parser.add_argument('--suggest-changes',
                        action='store_true',
                        help='Analyze project and write suggestions.md with recommended changes')
 
     args = parser.parse_args()
     
-    print("🤖 AI-Powered CI/CD Pipeline Generator")
+    print("🤖 AI DevOps Agent")
     print("=" * 50)
     
     try:
@@ -2437,13 +2590,20 @@ Examples:
         if args.suggest_changes:
             print("🔍 Generating suggestions report...")
             analysis = generator.analyzer.analyze_project()
-            analysis = generator._ai_enhance_analysis(analysis, fail_on_ai_error=generator.ai_mode_requested)
+            analysis = generator._ai_enhance_analysis(analysis)
             generator.suggest_changes(analysis)
+
+        elif args.apply_fixes:
+            print("🔧 Applying infra fixes from analysis...")
+            analysis = generator.analyzer.analyze_project()
+            changed = generator.apply_infra_fixes(analysis)
+            if changed:
+                print(f"✅ Applied fixes to: {', '.join(changed)}")
 
         elif args.analyze_only:
             print("🔍 Running analysis only...")
             analysis = generator.analyzer.analyze_project()
-            analysis = generator._ai_enhance_analysis(analysis, fail_on_ai_error=generator.ai_mode_requested)
+            analysis = generator._ai_enhance_analysis(analysis)
             
             # Display human-readable analysis
             print(generator._format_analysis_human_readable(analysis))
