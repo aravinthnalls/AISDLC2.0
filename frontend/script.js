@@ -2,13 +2,18 @@
 
 class QRGenerator {
     constructor() {
-        this.apiBaseUrl = 'http://localhost:8000';
+        const runtimeApiBase = typeof window !== 'undefined' && window.__API_BASE_URL__;
+        this.apiBaseUrl = runtimeApiBase || 'http://localhost:8000';
         this.debounceTimer = null;
         this.currentQRBlob = null;
+        this.currentQRImageUrl = null;
+        this.activeRequestController = null;
+        this.errorTimeout = null;
         
         this.initializeElements();
         this.bindEvents();
         this.updateHelperText();
+        this.updatePlaceholder();
     }
 
     initializeElements() {
@@ -43,6 +48,11 @@ class QRGenerator {
         // Clear error on input
         this.inputData.addEventListener('focus', () => {
             this.hideError();
+        });
+
+        // Cleanup object URLs and pending network requests
+        window.addEventListener('beforeunload', () => {
+            this.cleanupResources();
         });
     }
 
@@ -80,15 +90,31 @@ class QRGenerator {
     }
 
     async generateQRCode() {
-        const data = this.inputData.value.trim();
+        const rawData = this.inputData.value.trim();
+        const dataType = this.dataTypeSelect.value;
         
         // Clear previous QR code if input is empty
-        if (!data) {
+        if (!rawData) {
+            this.clearQRCode();
+            return;
+        }
+
+        const data = normalizeInput(rawData, dataType);
+        const validationError = getValidationErrorMessage(data, dataType);
+
+        if (validationError) {
+            this.showError(validationError);
             this.clearQRCode();
             return;
         }
 
         try {
+            // Cancel in-flight request to avoid stale preview updates
+            if (this.activeRequestController) {
+                this.activeRequestController.abort();
+            }
+
+            this.activeRequestController = new AbortController();
             this.showLoading();
             this.hideError();
 
@@ -97,14 +123,15 @@ class QRGenerator {
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                signal: this.activeRequestController.signal,
                 body: JSON.stringify({
                     data: data,
-                    data_type: this.dataTypeSelect.value
+                    data_type: dataType
                 })
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.detail || 'Failed to generate QR code');
             }
 
@@ -118,20 +145,35 @@ class QRGenerator {
             this.enableDownload();
 
         } catch (error) {
+            if (error.name === 'AbortError') {
+                return;
+            }
+
             console.error('Error generating QR code:', error);
             this.showError(error.message);
             this.clearQRCode();
         } finally {
+            this.activeRequestController = null;
             this.hideLoading();
         }
     }
 
     displayQRCode(imageUrl) {
+        if (this.currentQRImageUrl) {
+            URL.revokeObjectURL(this.currentQRImageUrl);
+        }
+
+        this.currentQRImageUrl = imageUrl;
         this.qrContainer.innerHTML = `<img src="${imageUrl}" alt="Generated QR Code">`;
         this.qrContainer.classList.add('has-qr');
     }
 
     clearQRCode() {
+        if (this.currentQRImageUrl) {
+            URL.revokeObjectURL(this.currentQRImageUrl);
+            this.currentQRImageUrl = null;
+        }
+
         this.qrContainer.innerHTML = `
             <div class="placeholder">
                 <div class="placeholder-icon">📱</div>
@@ -191,9 +233,13 @@ class QRGenerator {
     showError(message) {
         this.errorText.textContent = message;
         this.errorMessage.classList.add('show');
+
+        if (this.errorTimeout) {
+            clearTimeout(this.errorTimeout);
+        }
         
         // Auto-hide error after 5 seconds
-        setTimeout(() => {
+        this.errorTimeout = setTimeout(() => {
             this.hideError();
         }, 5000);
     }
@@ -216,9 +262,38 @@ class QRGenerator {
             return false;
         }
     }
+
+    cleanupResources() {
+        if (this.activeRequestController) {
+            this.activeRequestController.abort();
+            this.activeRequestController = null;
+        }
+
+        if (this.currentQRImageUrl) {
+            URL.revokeObjectURL(this.currentQRImageUrl);
+            this.currentQRImageUrl = null;
+        }
+
+        if (this.errorTimeout) {
+            clearTimeout(this.errorTimeout);
+            this.errorTimeout = null;
+        }
+    }
 }
 
 // Utility functions
+function normalizeInput(data, dataType) {
+    if (!data) {
+        return data;
+    }
+
+    if (dataType === 'url' && !/^https?:\/\//i.test(data)) {
+        return `https://${data}`;
+    }
+
+    return data;
+}
+
 function validateInput(data, dataType) {
     switch (dataType) {
         case 'email':
@@ -231,12 +306,34 @@ function validateInput(data, dataType) {
                 return false;
             }
         case 'phone':
-            return /^[\+]?[1-9][\d]{6,14}$/.test(data.replace(/\s/g, ''));
-        case 'wifi':
-            return data.split(',').length >= 2;
+            return /\d/.test(data) && data.replace(/[^\d]/g, '').length >= 7;
+        case 'wifi': {
+            const parts = data.split(',').map((part) => part.trim());
+            return parts.length >= 2 && parts[0].length > 0;
+        }
         default:
             return data.trim().length > 0;
     }
+}
+
+function getValidationErrorMessage(data, dataType) {
+    if (data.length > 1000) {
+        return 'Input is too long. Please keep it under 1000 characters.';
+    }
+
+    if (validateInput(data, dataType)) {
+        return '';
+    }
+
+    const validationMessages = {
+        text: 'Please enter text to generate a QR code.',
+        url: 'Please enter a valid URL (e.g., https://example.com).',
+        email: 'Please enter a valid email address.',
+        phone: 'Please enter a valid phone number with at least 7 digits.',
+        wifi: 'Please use WiFi format: SSID,Password,Security (security is optional).'
+    };
+
+    return validationMessages[dataType] || 'Please enter valid input.';
 }
 
 // Initialize the application when DOM is loaded
@@ -258,9 +355,15 @@ window.addEventListener('online', () => {
 
 window.addEventListener('offline', () => {
     console.log('📵 Connection lost');
+    const errorMessage = document.getElementById('errorMessage');
+    const errorText = document.getElementById('errorText');
+    if (errorMessage && errorText) {
+        errorText.textContent = 'You appear to be offline. QR generation requires backend connectivity.';
+        errorMessage.classList.add('show');
+    }
 });
 
 // Export for potential testing or external use
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { QRGenerator, validateInput };
+    module.exports = { QRGenerator, validateInput, normalizeInput, getValidationErrorMessage };
 }
